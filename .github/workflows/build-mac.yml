@@ -23,16 +23,11 @@ jobs:
       - run: npm ci
 
       - name: Build .dmg (x64 + arm64)
-        run: npx electron-builder --mac --x64 --arm64
+        run: npx electron-builder --mac --x64 --arm64 --publish never
+        # The macOS app is never code-signed or notarized: there is no Apple
+        # Developer Program licence, so no certificate to sign with.
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          # For signed + notarized builds, add these repository secrets and
-          # remove CSC_IDENTITY_AUTO_DISCOVERY above:
-          # CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
-          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - uses: actions/upload-artifact@v4
         with:
