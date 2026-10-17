@@ -742,11 +742,11 @@ const app = createApp({
             <!-- PROJECT DETAIL -->
             <div v-else>
               <div class="tabs">
+                <button class="tab" :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">{{ t('project.tab.sync') }}</button>
                 <button class="tab" :class="{ active: activeTab === 'config' }" @click="activeTab = 'config'">
                   <span>{{ t('project.tab.config') }}</span>
                   <span v-if="!selectedProject.configValidated" class="tab-dot" :title="t('project.notValidated')">●</span>
                 </button>
-                <button class="tab" :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">{{ t('project.tab.sync') }}</button>
                 <button class="tab" :class="{ active: activeTab === 'project' }" @click="activeTab = 'project'">{{ t('project.tab.project') }}</button>
               </div>
 
