@@ -30,6 +30,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Local AI Experts Sync
+  artifactName: ${productName}-${version}-${arch}-Setup.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-${arch}-portable.${ext}
 
 mac:
   target:
