@@ -100,7 +100,7 @@
     'files.newerOnServer': 'Newer on server:',
     'files.waitingUpload': 'Waiting to upload:',
 
-    'server.title': 'Server address',
+    'server.title': 'Git server address',
     'server.sub': 'The web address (remote URL) of your project. Ask whoever set up your project if you are unsure.',
     'server.placeholder': 'https://github.com/you/your-project.git or git@github.com:you/your-project.git',
     'server.save': 'Save',
@@ -390,7 +390,7 @@
     'files.newerOnServer': 'Plus récent sur le serveur :',
     'files.waitingUpload': "En attente d'envoi :",
 
-    'server.title': 'Adresse du serveur',
+    'server.title': 'Adresse du serveur git',
     'server.sub': "L'adresse web (URL distante) de votre projet. Demandez-la à la personne qui a configuré votre projet si vous avez un doute.",
     'server.placeholder': 'https://github.com/vous/votre-projet.git ou git@github.com:vous/votre-projet.git',
     'server.save': 'Enregistrer',
