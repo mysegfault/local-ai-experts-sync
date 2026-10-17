@@ -175,8 +175,8 @@
     'thisproject.title': 'This project',
     'thisproject.folder': 'Folder on your computer',
     'thisproject.open': 'Open folder',
-    'thisproject.check': 'Check server for updates',
     'thisproject.remove': 'Remove from this app',
+    'thisproject.removeNote': 'Removing a project here never deletes your files or any Git data on the computer.',
 
     /* ---- change tags ---- */
     'change.new': 'New',
@@ -215,7 +215,7 @@
 
     /* ---- delete confirm ---- */
     'delete.title': 'Remove this project?',
-    'delete.sub': 'This only removes the shortcut inside this app. Your files on the computer are not deleted.',
+    'delete.sub': 'No project data is deleted. This only removes the shortcut inside this app — your files and the Git history on the computer stay exactly as they are.',
     'delete.confirm': 'Yes, remove',
 
     /* ---- renderer banners ---- */
@@ -491,8 +491,8 @@
     'thisproject.title': 'Ce projet',
     'thisproject.folder': 'Dossier sur votre ordinateur',
     'thisproject.open': 'Ouvrir le dossier',
-    'thisproject.check': 'Vérifier les mises à jour du serveur',
     'thisproject.remove': 'Retirer de cette application',
+    'thisproject.removeNote': 'Retirer un projet ici ne supprime jamais vos fichiers ni aucune donnée Git sur l\u2019ordinateur.',
 
     /* ---- change tags ---- */
     'change.new': 'Nouveau',
@@ -531,7 +531,7 @@
 
     /* ---- delete confirm ---- */
     'delete.title': 'Retirer ce projet ?',
-    'delete.sub': 'Cela supprime uniquement le raccourci dans cette application. Vos fichiers sur l\u2019ordinateur ne sont pas supprimés.',
+    'delete.sub': 'Aucune donnée du projet n\u2019est supprimée. Cela retire uniquement le raccourci dans cette application — vos fichiers et l\u2019historique Git sur l\u2019ordinateur restent intacts.',
     'delete.confirm': 'Oui, retirer',
 
     /* ---- renderer banners ---- */

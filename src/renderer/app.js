@@ -614,13 +614,6 @@ const app = createApp({
         this.setBanner(res.message);
       }
     },
-    async doFetch() {
-      this.busy = 'fetch';
-      const res = await bridge.project.fetch(this.selectedId);
-      this.busy = '';
-      this.setBanner(res.message);
-      if (res.ok) await this.refreshStatus();
-    },
     async doPull() {
       if (this.pullBlocked) {
         this.setBanner({ tone: 'warn', title: this.t('main.pullBlocked.title'), detail: this.t('main.pullBlocked.detail') });
@@ -914,9 +907,9 @@ const app = createApp({
                   <div class="kv"><span class="k">{{ t('thisproject.folder') }}</span><span class="readonly-value" style="max-width:60%">{{ selectedProject.path }}</span></div>
                   <div class="actions-row" style="margin-top:12px">
                     <button class="btn" @click="reveal">📂 {{ t('thisproject.open') }}</button>
-                    <button class="btn" :disabled="!!busy" @click="doFetch">🔄 {{ t('thisproject.check') }}</button>
                     <button class="btn btn-danger" @click="deleteConfirm = true">{{ t('thisproject.remove') }}</button>
                   </div>
+                  <div class="help">{{ t('thisproject.removeNote') }}</div>
                 </div>
               </div>
             </div>
