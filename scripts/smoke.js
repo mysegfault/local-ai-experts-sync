@@ -187,6 +187,8 @@ app.whenReady().then(() => {
           out.activeTabText = activeTab ? activeTab.textContent.replace('●', '').trim() : null;
           out.tabDotPresent = !!document.querySelector('.tab-dot');
           out.verifyButtonPresent = Array.from(document.querySelectorAll('button')).some((b) => /Verify authentication/.test(b.textContent));
+          const rcDesc = document.querySelector('.radio-card .rc-desc');
+          out.rcDescBlock = rcDesc ? getComputedStyle(rcDesc).display === 'block' : false;
           const syncTab = Array.from(document.querySelectorAll('.tab')).find((tk) => tk.textContent.trim() === 'Sync');
           if (syncTab) syncTab.click();
           await wait(200);
@@ -229,6 +231,7 @@ app.whenReady().then(() => {
         ['sidebar shows name only (no real path)', result.sidebarShowsPath === false],
         ['unvalidated project opens Git configuration tab first', result.activeTabText === 'Git configuration' && result.tabDotPresent === true],
         ['verify authentication button present', result.verifyButtonPresent === true],
+        ['auth option title/description on separate lines', result.rcDescBlock === true],
         ['can switch to the Sync tab', result.syncTabText === 'Sync'],
         ['block Pull with local changes is on by default', result.blockPullDefault === true],
         ['Pull is blocked while local changes exist', result.pullBlocked === true && result.pullBlockedTitle === 'Pull is blocked'],
