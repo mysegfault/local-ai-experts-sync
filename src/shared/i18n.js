@@ -17,6 +17,7 @@
   const en = {
     /* ---- app chrome ---- */
     'app.brand': 'Local AI Experts Sync',
+    'app.siteLink': 'Local AI Experts — local-ai-experts.com',
     'app.starting': 'Starting up…',
     'app.gitVersionHint': 'Git {version} • {platform}',
     'common.dismiss': 'Dismiss',
@@ -307,6 +308,7 @@
   const fr = {
     /* ---- app chrome ---- */
     'app.brand': 'Local AI Experts Sync',
+    'app.siteLink': 'Local AI Experts — local-ai-experts.com',
     'app.starting': 'Démarrage…',
     'app.gitVersionHint': 'Git {version} • {platform}',
     'common.dismiss': 'Fermer',

@@ -3,11 +3,17 @@
 const { createApp } = Vue;
 const bridge = window.api;
 const I18n = window.LaesI18n;
+const SITE_URL = 'https://local-ai-experts.com';
+
+function openSite() {
+  bridge.app.openExternal(SITE_URL);
+}
 
 const MessageBanner = {
   props: {
     message: { type: Object, required: true },
     lang: { type: String, default: 'en' },
+    dismissible: { type: Boolean, default: true },
   },
   emits: ['dismiss'],
   computed: {
@@ -78,7 +84,12 @@ const GitMissing = {
   template: `
     <div class="app-shell">
       <div class="topbar">
-        <div class="brand"><span class="logo">⇄</span> {{ 'Local AI Experts Sync' }}</div>
+        <div class="brand">
+          <a class="brand-link" href="https://local-ai-experts.com" @click.prevent="openSite">
+            <img class="brand-logo" src="assets/logo-local-ai-experts.svg" alt="Local AI Experts" />
+          </a>
+          <span>Local AI Experts Sync</span>
+        </div>
       </div>
       <div class="center-wrap">
         <div class="welcome card" style="padding:32px">
@@ -117,7 +128,12 @@ const LanguageChooser = {
   template: `
     <div class="app-shell">
       <div class="topbar">
-        <div class="brand"><span class="logo">⇄</span> Local AI Experts Sync</div>
+        <div class="brand">
+          <a class="brand-link" href="https://local-ai-experts.com" @click.prevent="openSite">
+            <img class="brand-logo" src="assets/logo-local-ai-experts.svg" alt="Local AI Experts" />
+          </a>
+          <span>Local AI Experts Sync</span>
+        </div>
       </div>
       <div class="center-wrap">
         <div class="welcome card" style="padding:36px;max-width:520px">
@@ -182,7 +198,12 @@ const IdentitySetup = {
   template: `
     <div class="app-shell">
       <div class="topbar">
-        <div class="brand"><span class="logo">⇄</span> Local AI Experts Sync</div>
+        <div class="brand">
+          <a class="brand-link" href="https://local-ai-experts.com" @click.prevent="openSite">
+            <img class="brand-logo" src="assets/logo-local-ai-experts.svg" alt="Local AI Experts" />
+          </a>
+          <span>Local AI Experts Sync</span>
+        </div>
       </div>
       <div class="center-wrap">
         <div class="welcome card" style="padding:32px;max-width:520px;text-align:left">
@@ -598,7 +619,12 @@ const app = createApp({
 
     <div v-else class="app-shell">
       <div class="topbar">
-        <div class="brand"><span class="logo">⇄</span> {{ t('app.brand') }}</div>
+        <div class="brand">
+          <a class="brand-link" href="https://local-ai-experts.com" :title="t('app.siteLink')" @click.prevent="openSite">
+            <img class="brand-logo" src="assets/logo-local-ai-experts.svg" alt="Local AI Experts" />
+          </a>
+          <span>{{ t('app.brand') }}</span>
+        </div>
         <div class="spacer"></div>
         <span class="hint" v-if="info">{{ t('app.gitVersionHint', { version: git.version, platform: platformLabel() }) }}</span>
         <button class="icon-btn" :title="t('settings.button')" :aria-label="t('settings.button')" @click="openSettings">⚙️</button>
@@ -940,4 +966,5 @@ const app = createApp({
   `,
 });
 
+app.config.globalProperties.openSite = openSite;
 app.mount('#app');

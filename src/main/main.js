@@ -16,6 +16,7 @@ function createWindow() {
     backgroundColor: '#0f172a',
     show: false,
     title: 'Local AI Experts Sync',
+    icon: path.join(__dirname, '..', 'renderer', 'assets', 'app-icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,
