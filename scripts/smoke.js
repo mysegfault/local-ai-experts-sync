@@ -195,6 +195,12 @@ app.whenReady().then(() => {
           const activeTab2 = document.querySelector('.tab.active');
           out.syncTabText = activeTab2 ? activeTab2.textContent.trim() : null;
 
+          // Project tab offers a "open a terminal here" action.
+          const projTab = Array.from(document.querySelectorAll('.tab')).find((tk) => tk.textContent.trim() === 'Project');
+          if (projTab) projTab.click();
+          await wait(200);
+          out.terminalButtonPresent = Array.from(document.querySelectorAll('button')).some((b) => /Open a terminal here/.test(b.textContent));
+
           // Pull safety: blocked while local changes exist (default on).
           const allSettings = await window.api.settings.get();
           out.blockPullDefault = allSettings.settings.blockPullWithLocalChanges === true;
@@ -233,6 +239,7 @@ app.whenReady().then(() => {
         ['verify authentication button present', result.verifyButtonPresent === true],
         ['auth option title/description on separate lines', result.rcDescBlock === true],
         ['can switch to the Sync tab', result.syncTabText === 'Sync'],
+        ['project tab offers a terminal button', result.terminalButtonPresent === true],
         ['block Pull with local changes is on by default', result.blockPullDefault === true],
         ['Pull is blocked while local changes exist', result.pullBlocked === true && result.pullBlockedTitle === 'Pull is blocked'],
         ['existing Git repo detected on add', result.inspectIsRepo === true],

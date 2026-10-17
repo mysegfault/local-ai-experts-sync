@@ -647,6 +647,11 @@ const app = createApp({
     async reveal() {
       if (this.selectedProject) await bridge.project.reveal(this.selectedId);
     },
+    async openTerminal() {
+      if (!this.selectedProject) return;
+      const res = await bridge.project.openTerminal(this.selectedId);
+      if (res && !res.ok && res.message) this.setBanner(res.message);
+    },
   },
   mounted() {
     window.addEventListener('keydown', this.onKeydown);
@@ -907,6 +912,9 @@ const app = createApp({
                   <div class="kv"><span class="k">{{ t('thisproject.folder') }}</span><span class="readonly-value" style="max-width:60%">{{ selectedProject.path }}</span></div>
                   <div class="actions-row" style="margin-top:12px">
                     <button class="btn" @click="reveal">📂 {{ t('thisproject.open') }}</button>
+                    <button class="btn" @click="openTerminal">💻 {{ t('thisproject.terminal') }}</button>
+                  </div>
+                  <div class="actions-row" style="margin-top:12px">
                     <button class="btn btn-danger" @click="deleteConfirm = true">{{ t('thisproject.remove') }}</button>
                   </div>
                   <div class="help">{{ t('thisproject.removeNote') }}</div>

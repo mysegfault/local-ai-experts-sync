@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   project: {
     reveal: (id) => invoke('project:reveal', id),
+    openTerminal: (id) => invoke('project:open-terminal', id),
     init: (id) => invoke('project:init', id),
     inspect: (payload) => invoke('project:inspect', payload),
     status: (id) => invoke('project:status', id),

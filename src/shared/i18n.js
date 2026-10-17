@@ -175,6 +175,7 @@
     'thisproject.title': 'This project',
     'thisproject.folder': 'Folder on your computer',
     'thisproject.open': 'Open folder',
+    'thisproject.terminal': 'Open a terminal here',
     'thisproject.remove': 'Remove from this app',
     'thisproject.removeNote': 'Removing a project here never deletes your files or any Git data on the computer.',
 
@@ -321,6 +322,8 @@
     'main.err.prepareChanges.title': "We couldn't prepare your changes",
     'main.err.saveChanges.title': "We couldn't save your changes",
     'main.err.upload.title': "We couldn't upload your changes",
+    'main.err.noTerminal.title': 'No terminal found',
+    'main.err.noTerminal.detail': "We couldn't find a terminal application on this computer. Install one and try again.",
     'main.err.pullFirst.detail': 'Click "Pull" first to download the latest changes, then click "Push" again.',
     'main.pullBlocked.title': 'Pull is blocked',
     'main.pullBlocked.detail':
@@ -491,6 +494,7 @@
     'thisproject.title': 'Ce projet',
     'thisproject.folder': 'Dossier sur votre ordinateur',
     'thisproject.open': 'Ouvrir le dossier',
+    'thisproject.terminal': 'Ouvrir un terminal ici',
     'thisproject.remove': 'Retirer de cette application',
     'thisproject.removeNote': 'Retirer un projet ici ne supprime jamais vos fichiers ni aucune donnée Git sur l\u2019ordinateur.',
 
@@ -637,6 +641,8 @@
     'main.err.prepareChanges.title': 'Nous n\u2019avons pas pu préparer vos modifications',
     'main.err.saveChanges.title': 'Nous n\u2019avons pas pu enregistrer vos modifications',
     'main.err.upload.title': 'Nous n\u2019avons pas pu téléverser vos modifications',
+    'main.err.noTerminal.title': 'Aucun terminal trouvé',
+    'main.err.noTerminal.detail': 'Nous n\u2019avons pas trouvé d\u2019application terminal sur cet ordinateur. Installez-en une, puis réessayez.',
     'main.err.pullFirst.detail': 'Cliquez d\u2019abord sur « Récupérer » pour télécharger les dernières modifications, puis cliquez à nouveau sur « Envoyer ».',
     'main.pullBlocked.title': 'Récupérer est bloqué',
     'main.pullBlocked.detail':

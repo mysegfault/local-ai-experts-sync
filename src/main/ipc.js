@@ -8,6 +8,7 @@ const config = require('./config');
 const credentials = require('./credentials');
 const git = require('./git');
 const messages = require('./messages');
+const terminal = require('./terminal');
 const I18n = require('../shared/i18n');
 
 let mainWindowGetter = () => null;
@@ -256,6 +257,19 @@ function registerIpc(getWindow) {
     const p = config.getProject(id);
     if (!p) return { ok: false };
     shell.showItemInFolder(path.join(p.path, '.'));
+    return { ok: true };
+  }));
+
+  ipcMain.handle('project:open-terminal', safe(async (_evt, id) => {
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+    if (!fs.existsSync(p.path)) {
+      return { ok: false, message: toast('error', 'main.err.folderNotFound.title', 'main.err.folderNotFound.detail') };
+    }
+    const ok = await terminal.openTerminal(p.path);
+    if (!ok) {
+      return { ok: false, message: toast('warn', 'main.err.noTerminal.title', 'main.err.noTerminal.detail') };
+    }
     return { ok: true };
   }));
 
