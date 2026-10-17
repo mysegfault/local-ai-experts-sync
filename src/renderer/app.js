@@ -263,6 +263,8 @@ const app = createApp({
       identityError: '',
       identityFormName: '',
       identityFormEmail: '',
+      blockPull: true,
+      lastProjectId: '',
       authMode: 'none',
       authUsername: '',
       authSecret: '',
@@ -319,11 +321,18 @@ const app = createApp({
       this.languageChosen = !!settings.languageChosen;
       this.lang = this.languageChosen ? settings.language : I18n.normalize(infoRes.locale);
       this.identityDismissed = !!settings.identityPromptDismissed;
+      this.blockPull = settings.blockPullWithLocalChanges !== false;
+      this.lastProjectId = settings.lastProjectId || '';
       if (gitRes.installed) {
         const idRes = await bridge.identity.get();
         if (idRes && idRes.ok) this.gitIdentity = { name: idRes.name || '', email: idRes.email || '' };
       }
       await this.refreshProjects();
+      // Re-open the last project (only if it still exists), otherwise show Welcome.
+      if (this.lastProjectId) {
+        const last = this.projects.find((p) => p.id === this.lastProjectId);
+        if (last && last.exists !== false) await this.selectProject(last);
+      }
       this.booting = false;
     },
     async chooseLanguage(lang) {
@@ -391,6 +400,31 @@ const app = createApp({
       if (this.selectedId && !this.projects.find((p) => p.id === this.selectedId)) {
         this.selectedId = null;
       }
+      await this.refreshStates();
+    },
+    async refreshStates() {
+      const res = await bridge.projects.statuses();
+      if (!res || !res.ok) return;
+      const map = {};
+      res.statuses.forEach((s) => {
+        map[s.id] = s.state;
+      });
+      this.projects = this.projects.map((p) => Object.assign({}, p, {
+        syncState: map[p.id] || (p.exists === false ? 'missing' : 'upToDate'),
+      }));
+    },
+    computeState(data) {
+      if (!data) return 'upToDate';
+      const hasLocal = data.changes.length > 0 || data.ahead > 0;
+      if (hasLocal) return 'unpushed';
+      if (data.behind > 0) return 'toPull';
+      return 'upToDate';
+    },
+    stateGlyph(state) {
+      return { upToDate: '🟢', unpushed: '🟠', toPull: '🔵', missing: '⚠️' }[state] || '🟢';
+    },
+    stateLabel(state) {
+      return this.t('legend.' + (['upToDate', 'unpushed', 'toPull', 'missing'].indexOf(state) !== -1 ? state : 'upToDate'));
     },
     setBanner(message) {
       this.banner = message || null;
@@ -400,10 +434,14 @@ const app = createApp({
     },
     async selectProject(p) {
       this.selectedId = p.id;
+      this.lastProjectId = p.id;
       this.banner = null;
       this.status = null;
       this.statusMessage = null;
+      // Until the Git configuration is validated, open that tab first.
+      this.activeTab = p.configValidated ? 'sync' : 'config';
       this.populateForms(p);
+      await bridge.settings.set({ lastProjectId: p.id });
       await this.refreshStatus();
     },
     populateForms(p) {
@@ -427,6 +465,9 @@ const app = createApp({
       this.status = res.data;
       this.counts = res.counts;
       this.statusMessage = res.message;
+      // Keep the sidebar icon in sync for the selected project.
+      const state = this.computeState(res.data);
+      this.projects = this.projects.map((p) => (p.id === this.selectedId ? Object.assign({}, p, { syncState: state }) : p));
     },
     kindLabel(kind) {
       const known = ['new', 'added', 'modified', 'deleted', 'renamed', 'conflict', 'changed'];
@@ -506,8 +547,10 @@ const app = createApp({
       this.busy = '';
       this.deleteConfirm = false;
       this.selectedId = null;
+      this.lastProjectId = '';
       this.status = null;
       this.statusMessage = null;
+      await bridge.settings.set({ lastProjectId: '' });
       await this.refreshProjects();
       this.setBanner({ tone: 'info', title: this.t('banner.projectRemoved.title'), detail: this.t('banner.projectRemoved.detail') });
     },
@@ -659,15 +702,22 @@ const app = createApp({
           <ul class="project-list" v-if="projects.length">
             <li v-for="p in projects" :key="p.id">
               <button class="project-item" :class="{ active: p.id === selectedId }" @click="selectProject(p)">
-                <span class="dot"></span>
+                <span class="state" :title="stateLabel(p.syncState)">{{ stateGlyph(p.syncState) }}</span>
                 <span class="names">
                   <span class="pname">{{ p.name }}</span>
-                  <span class="ppath">{{ p.path }}</span>
                 </span>
               </button>
             </li>
           </ul>
           <div class="empty-sidebar" v-else>{{ t('sidebar.empty') }}</div>
+
+          <div class="legend" v-if="projects.length">
+            <div class="legend-title">{{ t('legend.title') }}</div>
+            <div class="legend-item"><span class="legend-glyph">🟢</span><span>{{ t('legend.upToDate') }}</span></div>
+            <div class="legend-item"><span class="legend-glyph">🟠</span><span>{{ t('legend.unpushed') }}</span></div>
+            <div class="legend-item"><span class="legend-glyph">🔵</span><span>{{ t('legend.toPull') }}</span></div>
+            <div class="legend-item"><span class="legend-glyph">⚠️</span><span>{{ t('legend.missing') }}</span></div>
+          </div>
         </aside>
 
         <main class="content">

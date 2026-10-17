@@ -142,8 +142,33 @@ function registerIpc(getWindow) {
     const projects = config.getProjects().map((p) => ({
       ...p,
       hasSecret: credentials.hasSecret(p.id, 'secret'),
+      exists: fs.existsSync(p.path),
     }));
     return { ok: true, projects };
+  }));
+
+  // Cheap per-project sync state for the sidebar icons.
+  ipcMain.handle('projects:statuses', safe(async () => {
+    const statuses = [];
+    for (const p of config.getProjects()) {
+      let state = 'upToDate';
+      if (!fs.existsSync(p.path)) {
+        state = 'missing';
+      } else {
+        const res = await git.status(p.path);
+        if (!res.ok) {
+          state = 'missing';
+        } else {
+          const d = res.data;
+          const hasLocal = d.changes.length > 0 || d.ahead > 0;
+          const hasRemote = d.behind > 0;
+          if (hasLocal) state = 'unpushed';
+          else if (hasRemote) state = 'toPull';
+        }
+      }
+      statuses.push({ id: p.id, state });
+    }
+    return { ok: true, statuses };
   }));
 
   // Inspect a folder chosen in the "Add project" dialog: detect whether it is

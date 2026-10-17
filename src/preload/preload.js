@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   projects: {
     list: () => invoke('projects:list'),
+    statuses: () => invoke('projects:statuses'),
     create: (payload) => invoke('projects:create', payload),
     update: (payload) => invoke('projects:update', payload),
     remove: (id) => invoke('projects:remove', id),
