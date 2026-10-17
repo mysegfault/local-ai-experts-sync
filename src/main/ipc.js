@@ -278,8 +278,14 @@ function registerIpc(getWindow) {
     const p = config.getProject(id);
     if (!p) return { ok: false, error: 'Project not found' };
 
-    // Save uncommitted work first so pulling cannot surprise the user.
     const st = await git.status(p.path);
+
+    // Safety (on by default): never Pull over uncommitted local changes.
+    if (config.getSettings().blockPullWithLocalChanges && st.ok && st.data.changes.length > 0) {
+      return { ok: false, blocked: true, message: toast('warn', 'main.pullBlocked.title', 'main.pullBlocked.detail') };
+    }
+
+    // Otherwise, save uncommitted work first so pulling cannot surprise the user.
     if (st.ok && st.data.changes.length > 0) {
       const save = await git.addAll(p.path);
       if (save.ok) {

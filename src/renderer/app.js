@@ -279,6 +279,9 @@ const app = createApp({
     identityReady() {
       return Boolean(this.gitIdentity.name && this.gitIdentity.email);
     },
+    pullBlocked() {
+      return this.blockPull && this.changes.length > 0;
+    },
     selectedProject() {
       return this.projects.find((p) => p.id === this.selectedId) || null;
     },
@@ -364,6 +367,10 @@ const app = createApp({
     },
     closeSettings() {
       this.settingsModal = false;
+    },
+    async setBlockPull(value) {
+      this.blockPull = !!value;
+      await bridge.settings.set({ blockPullWithLocalChanges: this.blockPull });
     },
     closeTopModal() {
       if (this.deleteConfirm) this.deleteConfirm = false;
@@ -563,6 +570,10 @@ const app = createApp({
       if (res.ok) await this.refreshStatus();
     },
     async doPull() {
+      if (this.pullBlocked) {
+        this.setBanner({ tone: 'warn', title: this.t('main.pullBlocked.title'), detail: this.t('main.pullBlocked.detail') });
+        return;
+      }
       this.busy = 'pull';
       const res = await bridge.project.pull(this.selectedId);
       this.busy = '';
@@ -926,6 +937,17 @@ const app = createApp({
                 </label>
               </div>
               <div class="help">{{ t('settings.language.help') }}</div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="field">
+              <label class="check-row">
+                <input type="checkbox" :checked="blockPull" @change="setBlockPull($event.target.checked)" />
+                <span>
+                  <b>{{ t('settings.blockPull.label') }}</b>
+                  <span class="help" style="display:block;margin-top:2px">{{ t('settings.blockPull.help') }}</span>
+                </span>
+              </label>
             </div>
 
             <div class="divider"></div>

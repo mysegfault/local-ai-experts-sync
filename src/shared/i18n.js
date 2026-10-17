@@ -39,6 +39,9 @@
     'settings.about.git': 'Git version',
     'settings.about.platform': 'System',
     'settings.close': 'Close',
+    'settings.blockPull.label': 'Block Pull when there are local changes',
+    'settings.blockPull.help':
+      'Recommended for beginners: this avoids unexpected conflicts by refusing to download while you still have unsaved changes. Uncheck it if you prefer to Pull anyway.',
 
     /* ---- language chooser ---- */
     'lang.title': 'Choose your language',
@@ -300,6 +303,9 @@
     'main.err.saveChanges.title': "We couldn't save your changes",
     'main.err.upload.title': "We couldn't upload your changes",
     'main.err.pullFirst.detail': 'Click "Pull" first to download the latest changes, then click "Push" again.',
+    'main.pullBlocked.title': 'Pull is blocked',
+    'main.pullBlocked.detail':
+      'Pull is blocked because you have local changes. Push your changes first (or turn off this safety option in Settings).',
 
     /* ---- test harness strings ---- */
     'test.hello': 'Hello',
@@ -330,6 +336,9 @@
     'settings.about.git': 'Version de Git',
     'settings.about.platform': 'Système',
     'settings.close': 'Fermer',
+    'settings.blockPull.label': 'Interdire Récupérer en cas de modifications locales',
+    'settings.blockPull.help':
+      'Recommandé pour les débutants : cela évite les conflits imprévus en refusant le téléchargement tant que vous avez des modifications non enregistrées. Décochez si vous préférez Récupérer quand même.',
 
     /* ---- language chooser ---- */
     'lang.title': 'Choisissez votre langue',
@@ -591,6 +600,9 @@
     'main.err.saveChanges.title': 'Nous n\u2019avons pas pu enregistrer vos modifications',
     'main.err.upload.title': 'Nous n\u2019avons pas pu téléverser vos modifications',
     'main.err.pullFirst.detail': 'Cliquez d\u2019abord sur « Récupérer » pour télécharger les dernières modifications, puis cliquez à nouveau sur « Envoyer ».',
+    'main.pullBlocked.title': 'Récupérer est bloqué',
+    'main.pullBlocked.detail':
+      'Récupérer est bloqué car vous avez des modifications locales. Envoyez d\u2019abord vos modifications (ou désactivez cette option de sécurité dans les Paramètres).',
 
     /* ---- test harness strings ---- */
     'test.hello': 'Bonjour',

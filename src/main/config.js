@@ -27,6 +27,11 @@ function defaultConfig() {
       languageChosen: false,
       // true once the user saw/dismissed the first-run identity prompt
       identityPromptDismissed: false,
+      // Safety for beginners: refuse to Pull while there are local changes,
+      // to avoid merge conflicts. Enabled by default.
+      blockPullWithLocalChanges: true,
+      // id of the last project the user had open (re-opened on next start)
+      lastProjectId: '',
     },
   };
 }

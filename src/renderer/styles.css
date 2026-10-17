@@ -522,6 +522,38 @@ textarea {
   color: var(--ok);
 }
 
+.sync-btn:disabled {
+  cursor: not-allowed;
+}
+
+.sync-btn.blocked {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.sync-btn.blocked .glyph {
+  background: var(--err-bg);
+  color: var(--err);
+}
+
+.sync-btn.blocked .desc {
+  color: var(--err);
+}
+
+.check-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.check-row input {
+  margin-top: 3px;
+  flex: none;
+}
+
 .sync-btn .label {
   font-weight: 700;
   font-size: 16px;
