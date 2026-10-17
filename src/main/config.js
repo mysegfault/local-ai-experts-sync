@@ -85,6 +85,8 @@ function normalizeProject(p) {
       username: (p.auth && p.auth.username) || '',
       sshKeyPath: (p.auth && p.auth.sshKeyPath) || '',
     },
+    // true once the user has successfully verified authentication for this repo
+    configValidated: !!p.configValidated,
     createdAt: p.createdAt || Date.now(),
   };
 }

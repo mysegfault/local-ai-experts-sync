@@ -35,7 +35,7 @@ const MessageBanner = {
         <p class="title">{{ message.title }}</p>
         <p class="detail" v-if="message.detail">{{ message.detail }}</p>
       </div>
-      <button class="close" :title="dismissLabel" @click="$emit('dismiss')">✕</button>
+      <button v-if="dismissible" class="close" :title="dismissLabel" @click="$emit('dismiss')">✕</button>
     </div>
   `,
 };
@@ -270,6 +270,7 @@ const app = createApp({
       secretDirty: false,
       deleteConfirm: false,
       settingsModal: false,
+      activeTab: 'sync',
     };
   },
   computed: {
@@ -556,11 +557,19 @@ const app = createApp({
     },
 
     /* ---- connection & sync ---- */
-    async testConnection() {
+    async verifyAuthentication() {
       this.busy = 'test';
       const res = await bridge.project.testConnection({ id: this.selectedId, url: this.remoteInput });
       this.busy = '';
-      this.setBanner(res.message);
+      if (res.ok) {
+        // Mark the Git configuration as validated and move to the Sync tab.
+        const upd = await bridge.projects.update({ id: this.selectedId, patch: { configValidated: true } });
+        if (upd.ok) await this.refreshProjects();
+        this.activeTab = 'sync';
+        this.setBanner({ tone: 'ok', title: this.t('banner.authValidated.title'), detail: this.t('banner.authValidated.detail') });
+      } else {
+        this.setBanner(res.message);
+      }
     },
     async doFetch() {
       this.busy = 'fetch';
@@ -682,155 +691,182 @@ const app = createApp({
 
             <!-- PROJECT DETAIL -->
             <div v-else>
-              <h1 class="section-title">{{ selectedProject.name }}</h1>
-              <p class="section-sub">{{ t('project.subtitle') }}</p>
-
-              <message-banner v-if="statusMessage" :message="statusMessage" :lang="lang" @dismiss="statusMessage = null" />
-
-              <div class="sync-row">
-                <button class="sync-btn" :disabled="!!busy" @click="doPull">
-                  <span class="glyph">⬇️</span>
-                  <span>
-                    <span class="label">{{ t('project.pull') }}</span>
-                    <span class="desc">{{ t('project.pullDesc') }}</span>
-                  </span>
-                  <span class="spinner dark" v-if="busy === 'pull'" style="margin-left:auto"></span>
+              <div class="tabs">
+                <button class="tab" :class="{ active: activeTab === 'config' }" @click="activeTab = 'config'">
+                  <span>{{ t('project.tab.config') }}</span>
+                  <span v-if="!selectedProject.configValidated" class="tab-dot" :title="t('project.notValidated')">●</span>
                 </button>
-                <button class="sync-btn push" :disabled="!!busy" @click="openPush">
-                  <span class="glyph">⬆️</span>
-                  <span>
-                    <span class="label">{{ t('project.push') }}</span>
-                    <span class="desc">{{ t('project.pushDesc') }}</span>
-                  </span>
-                  <span class="spinner dark" v-if="busy === 'push'" style="margin-left:auto"></span>
-                </button>
+                <button class="tab" :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">{{ t('project.tab.sync') }}</button>
+                <button class="tab" :class="{ active: activeTab === 'project' }" @click="activeTab = 'project'">{{ t('project.tab.project') }}</button>
               </div>
 
-              <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between">
-                  <div>
-                    <h3>{{ t('files.title') }}</h3>
-                    <p class="sub">{{ t('files.sub') }}</p>
-                  </div>
-                  <button class="btn btn-sm" :disabled="!!busy" @click="refreshStatus">↻ {{ t('common.refresh') }}</button>
+              <!-- GIT CONFIGURATION TAB (shown first until validated) -->
+              <div v-show="activeTab === 'config'">
+                <div class="warn-note" v-if="!selectedProject.configValidated" style="margin-bottom:18px">
+                  {{ t('project.notValidated') }}
                 </div>
 
-                <ul class="change-list" v-if="changes.length">
-                  <li class="change-item" v-for="c in changes" :key="c.path">
-                    <span class="tag" :class="c.kind">{{ kindLabel(c.kind) }}</span>
-                    <span class="path">{{ c.path }}</span>
-                  </li>
-                </ul>
-                <p v-else style="color:var(--ink-soft);font-size:14px;margin:6px 0 0">
-                  {{ t('files.none') }}{{ busy === 'status' ? ' ' + t('files.checking') : '' }}
-                </p>
-
-                <div class="branch-info" v-if="status">
-                  <span>{{ t('files.branch') }} <b>{{ status.branch || '—' }}</b></span>
-                  <span v-if="status.upstream">{{ t('files.serverBranch') }} <b>{{ status.upstream }}</b></span>
-                  <span v-else>{{ t('files.notConnected') }}</span>
-                  <span v-if="behind">{{ t('files.newerOnServer') }} <b>{{ behind }}</b></span>
-                  <span v-if="ahead">{{ t('files.waitingUpload') }} <b>{{ ahead }}</b></span>
-                </div>
-              </div>
-
-              <div class="card">
-                <h3>{{ t('server.title') }}</h3>
-                <p class="sub">{{ t('server.sub') }}</p>
-                <div class="field">
-                  <div class="input-row">
-                    <input type="text" v-model="remoteInput" :placeholder="t('server.placeholder')" />
-                    <button class="btn" :disabled="!!busy" @click="saveRemote">{{ t('server.save') }}</button>
-                    <button class="btn btn-primary" :disabled="!!busy" @click="testConnection">
-                      <span class="spinner" v-if="busy === 'test'"></span>
-                      <span v-else>{{ t('server.test') }}</span>
-                    </button>
-                  </div>
-                  <div class="help">{{ t('server.tip') }}</div>
-                </div>
-              </div>
-
-              <div class="card">
-                <h3>{{ t('auth.title') }}</h3>
-                <p class="sub">{{ t('auth.sub') }}</p>
-
-                <div class="radio-group">
-                  <label class="radio-card" :class="{ active: authMode === 'none' }">
-                    <input type="radio" value="none" v-model="authMode" />
-                    <span>
-                      <span class="rc-title">{{ t('auth.none.title') }}</span>
-                      <span class="rc-desc">{{ t('auth.none.desc') }}</span>
-                    </span>
-                  </label>
-                  <label class="radio-card" :class="{ active: authMode === 'ssh' }">
-                    <input type="radio" value="ssh" v-model="authMode" />
-                    <span>
-                      <span class="rc-title">{{ t('auth.ssh.title') }}</span>
-                      <span class="rc-desc">{{ t('auth.ssh.desc') }}</span>
-                    </span>
-                  </label>
-                  <label class="radio-card" :class="{ active: authMode === 'token' }">
-                    <input type="radio" value="token" v-model="authMode" />
-                    <span>
-                      <span class="rc-title">{{ t('auth.token.title') }}</span>
-                      <span class="rc-desc">{{ t('auth.token.desc') }}</span>
-                    </span>
-                  </label>
-                  <label class="radio-card" :class="{ active: authMode === 'password' }">
-                    <input type="radio" value="password" v-model="authMode" />
-                    <span>
-                      <span class="rc-title">{{ t('auth.password.title') }}</span>
-                      <span class="rc-desc">{{ t('auth.password.desc') }}</span>
-                    </span>
-                  </label>
-                </div>
-
-                <div v-if="authMode === 'ssh'" style="margin-top:16px">
+                <div class="card">
+                  <h3>{{ t('server.title') }}</h3>
+                  <p class="sub">{{ t('server.sub') }}</p>
                   <div class="field">
-                    <label>{{ t('auth.sshKey.label') }}</label>
                     <div class="input-row">
-                      <input type="text" v-model="sshKeyPath" :placeholder="t('auth.sshKey.placeholder')" />
-                      <button class="btn" @click="pickKeyFile">{{ t('auth.sshKey.choose') }}</button>
+                      <input type="text" v-model="remoteInput" :placeholder="t('server.placeholder')" />
+                      <button class="btn" :disabled="!!busy" @click="saveRemote">{{ t('server.save') }}</button>
                     </div>
-                    <div class="help">{{ t('auth.sshKey.help') }}</div>
+                    <div class="help">{{ t('server.tip') }}</div>
                   </div>
                 </div>
 
-                <div v-if="authMode === 'token' || authMode === 'password'" style="margin-top:16px">
-                  <div class="grid-2">
+                <div class="card">
+                  <h3>{{ t('auth.title') }}</h3>
+                  <p class="sub">{{ t('auth.sub') }}</p>
+
+                  <div class="radio-group">
+                    <label class="radio-card" :class="{ active: authMode === 'none' }">
+                      <input type="radio" value="none" v-model="authMode" />
+                      <span>
+                        <span class="rc-title">{{ t('auth.system.title') }}</span>
+                        <span class="rc-desc">{{ t('auth.system.desc') }}</span>
+                      </span>
+                    </label>
+                    <label class="radio-card" :class="{ active: authMode === 'ssh' }">
+                      <input type="radio" value="ssh" v-model="authMode" />
+                      <span>
+                        <span class="rc-title">{{ t('auth.ssh.title') }}</span>
+                        <span class="rc-desc">{{ t('auth.ssh.desc') }}</span>
+                      </span>
+                    </label>
+                    <label class="radio-card" :class="{ active: authMode === 'token' }">
+                      <input type="radio" value="token" v-model="authMode" />
+                      <span>
+                        <span class="rc-title">{{ t('auth.token.title') }}</span>
+                        <span class="rc-desc">{{ t('auth.token.desc') }}</span>
+                      </span>
+                    </label>
+                    <label class="radio-card" :class="{ active: authMode === 'password' }">
+                      <input type="radio" value="password" v-model="authMode" />
+                      <span>
+                        <span class="rc-title">{{ t('auth.password.title') }}</span>
+                        <span class="rc-desc">{{ t('auth.password.desc') }}</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div v-if="authMode === 'ssh'" style="margin-top:16px">
                     <div class="field">
-                      <label>{{ t('auth.username.label') }}</label>
-                      <input type="text" v-model="authUsername" :placeholder="t('auth.username.placeholder')" />
-                    </div>
-                    <div class="field">
-                      <label>{{ authMode === 'token' ? t('auth.token.label') : t('auth.password.label') }}</label>
-                      <input type="password" v-model="authSecret" @input="secretDirty = true"
-                             :placeholder="selectedProject.hasSecret ? '•••••• saved' : (authMode === 'token' ? t('auth.token.placeholder') : t('auth.password.placeholder'))" />
+                      <label>{{ t('auth.sshKey.label') }}</label>
+                      <div class="input-row">
+                        <input type="text" v-model="sshKeyPath" :placeholder="t('auth.sshKey.placeholder')" />
+                        <button class="btn" @click="pickKeyFile">{{ t('auth.sshKey.choose') }}</button>
+                      </div>
+                      <div class="help">{{ t('auth.sshKey.help') }}</div>
                     </div>
                   </div>
-                  <div class="help">{{ t('auth.secret.revealNote') }}</div>
-                  <div class="inline-note" v-if="selectedProject.hasSecret">
-                    {{ t('auth.secret.savedNote') }}
-                    <button class="btn btn-sm btn-danger" style="margin-left:8px" @click="clearSecret">{{ t('auth.secret.remove') }}</button>
+
+                  <div v-if="authMode === 'token' || authMode === 'password'" style="margin-top:16px">
+                    <div class="grid-2">
+                      <div class="field">
+                        <label>{{ t('auth.username.label') }}</label>
+                        <input type="text" v-model="authUsername" :placeholder="t('auth.username.placeholder')" />
+                      </div>
+                      <div class="field">
+                        <label>{{ authMode === 'token' ? t('auth.token.label') : t('auth.password.label') }}</label>
+                        <input type="password" v-model="authSecret" @input="secretDirty = true"
+                               :placeholder="selectedProject.hasSecret ? '•••••• saved' : (authMode === 'token' ? t('auth.token.placeholder') : t('auth.password.placeholder'))" />
+                      </div>
+                    </div>
+                    <div class="help">{{ t('auth.secret.revealNote') }}</div>
+                    <div class="inline-note" v-if="selectedProject.hasSecret">
+                      {{ t('auth.secret.savedNote') }}
+                      <button class="btn btn-sm btn-danger" style="margin-left:8px" @click="clearSecret">{{ t('auth.secret.remove') }}</button>
+                    </div>
+                  </div>
+
+                  <div class="warn-note" v-if="encryptionWarning">{{ t('auth.encryptionWarning') }}</div>
+
+                  <div class="divider"></div>
+                  <div class="actions-row">
+                    <button class="btn" :disabled="!!busy" @click="saveAuth">{{ t('auth.save') }}</button>
                   </div>
                 </div>
 
-                <div class="warn-note" v-if="encryptionWarning">{{ t('auth.encryptionWarning') }}</div>
-
-                <div class="divider"></div>
-                <div class="actions-row">
-                  <button class="btn btn-primary" :disabled="!!busy" @click="saveAuth">{{ t('auth.save') }}</button>
-                  <button class="btn" :disabled="!!busy" @click="testConnection">{{ t('auth.test') }}</button>
+                <div class="card verify-card">
+                  <h3>{{ t('project.verify.title') }}</h3>
+                  <p class="sub">{{ t('project.verify.sub') }}</p>
+                  <button class="btn btn-primary btn-lg" :disabled="!!busy" @click="verifyAuthentication">
+                    <span class="spinner" v-if="busy === 'test'"></span>
+                    <span v-else>{{ t('project.verify.button') }}</span>
+                  </button>
                 </div>
               </div>
 
-              <div class="card">
-                <h3>{{ t('thisproject.title') }}</h3>
-                <div class="kv"><span class="k">{{ t('thisproject.folder') }}</span><span class="readonly-value" style="max-width:60%">{{ selectedProject.path }}</span></div>
-                <div class="actions-row" style="margin-top:12px">
-                  <button class="btn" @click="reveal">📂 {{ t('thisproject.open') }}</button>
-                  <button class="btn" :disabled="!!busy" @click="doFetch">🔄 {{ t('thisproject.check') }}</button>
-                  <button class="btn btn-danger" @click="deleteConfirm = true">{{ t('thisproject.remove') }}</button>
+              <!-- SYNC TAB -->
+              <div v-show="activeTab === 'sync'">
+                <message-banner v-if="statusMessage" :message="statusMessage" :lang="lang" :dismissible="false" />
+
+                <div class="sync-row">
+                  <button class="sync-btn" :class="{ blocked: pullBlocked }" :disabled="!!busy || pullBlocked" @click="doPull">
+                    <span class="glyph">{{ pullBlocked ? '🚫' : '⬇️' }}</span>
+                    <span>
+                      <span class="label">{{ t('project.pull') }}</span>
+                      <span class="desc">{{ pullBlocked ? t('project.pullBlocked.short') : t('project.pullDesc') }}</span>
+                    </span>
+                    <span class="spinner dark" v-if="busy === 'pull'" style="margin-left:auto"></span>
+                  </button>
+                  <button class="sync-btn push" :disabled="!!busy" @click="openPush">
+                    <span class="glyph">⬆️</span>
+                    <span>
+                      <span class="label">{{ t('project.push') }}</span>
+                      <span class="desc">{{ t('project.pushDesc') }}</span>
+                    </span>
+                    <span class="spinner dark" v-if="busy === 'push'" style="margin-left:auto"></span>
+                  </button>
+                </div>
+
+                <div class="warn-note" v-if="pullBlocked" style="margin-top:-6px;margin-bottom:18px">
+                  {{ t('project.pullBlocked.detail') }}
+                </div>
+
+                <div class="card">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                      <h3>{{ t('files.title') }}</h3>
+                      <p class="sub">{{ t('files.sub') }}</p>
+                    </div>
+                    <button class="btn btn-sm" :disabled="!!busy" @click="refreshStatus">↻ {{ t('common.refresh') }}</button>
+                  </div>
+
+                  <ul class="change-list" v-if="changes.length">
+                    <li class="change-item" v-for="c in changes" :key="c.path">
+                      <span class="tag" :class="c.kind">{{ kindLabel(c.kind) }}</span>
+                      <span class="path">{{ c.path }}</span>
+                    </li>
+                  </ul>
+                  <p v-else style="color:var(--ink-soft);font-size:14px;margin:6px 0 0">
+                    {{ t('files.none') }}{{ busy === 'status' ? ' ' + t('files.checking') : '' }}
+                  </p>
+
+                  <div class="branch-info" v-if="status">
+                    <span>{{ t('files.branch') }} <b>{{ status.branch || '—' }}</b></span>
+                    <span v-if="status.upstream">{{ t('files.serverBranch') }} <b>{{ status.upstream }}</b></span>
+                    <span v-else>{{ t('files.notConnected') }}</span>
+                    <span v-if="behind">{{ t('files.newerOnServer') }} <b>{{ behind }}</b></span>
+                    <span v-if="ahead">{{ t('files.waitingUpload') }} <b>{{ ahead }}</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PROJECT TAB -->
+              <div v-show="activeTab === 'project'">
+                <div class="card">
+                  <h3>{{ t('thisproject.title') }}</h3>
+                  <div class="kv"><span class="k">{{ t('thisproject.folder') }}</span><span class="readonly-value" style="max-width:60%">{{ selectedProject.path }}</span></div>
+                  <div class="actions-row" style="margin-top:12px">
+                    <button class="btn" @click="reveal">📂 {{ t('thisproject.open') }}</button>
+                    <button class="btn" :disabled="!!busy" @click="doFetch">🔄 {{ t('thisproject.check') }}</button>
+                    <button class="btn btn-danger" @click="deleteConfirm = true">{{ t('thisproject.remove') }}</button>
+                  </div>
                 </div>
               </div>
             </div>
