@@ -9,6 +9,25 @@ Made by [Local AI Experts](https://local-ai-experts.com).
 
 ---
 
+## Download
+
+Get the latest release for your computer from the
+**[Releases page](https://github.com/mysegfault/local-ai-experts-sync/releases/latest)**:
+
+- **GNU/Linux** — `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
+- **Windows** — `…-Setup.exe` (installer) or `…-portable.exe` (no install)
+- **macOS** — `.dmg` (requires macOS 13+)
+
+> ⚠️ **The apps are not code-signed, and the macOS app never will be.** We will
+> never buy an Apple Developer Program licence, so there is no Apple certificate
+> to sign or notarize with. On first launch:
+>
+> - **macOS** — right-click the app → **Open**, or run
+>   `xattr -cr "/Applications/Local AI Experts Sync.app"`.
+> - **Windows** — if SmartScreen appears, click **More info → Run anyway**.
+
+---
+
 ## Why
 
 Git is powerful but intimidating. Non-technical users struggle with clone URLs,
@@ -71,8 +90,8 @@ npm run dist:mac     # macOS (.dmg)
 npm run dist:linux   # Linux (AppImage + deb)
 ```
 
-> Distributing on macOS requires an Apple Developer certificate for notarization;
-> Electron 44 also requires macOS 13+.
+> The macOS build is **intentionally never signed or notarized** — we will never
+> buy an Apple Developer Program licence. Electron 44 also requires macOS 13+.
 
 ## Tests
 
