@@ -34,6 +34,10 @@ execFileSync('git', ['init'], { cwd: inspectRepo });
 execFileSync('git', ['remote', 'add', 'origin', 'https://example.com/already.git'], { cwd: inspectRepo });
 execFileSync('git', ['config', 'user.name', 'Repo Owner'], { cwd: inspectRepo });
 execFileSync('git', ['config', 'user.email', 'owner@example.com'], { cwd: inspectRepo });
+// An uncommitted local change, so the Pull safety guard has something to block on.
+fs.writeFileSync(path.join(inspectRepo, 'local-change.txt'), 'work in progress\n');
+
+const config = require('../src/main/config');
 
 let win = null;
 let failed = false;
@@ -45,6 +49,13 @@ app.whenReady().then(() => {
   if (!menuOk) failed = true;
 
   registerIpc(() => win);
+
+  // Seed a project (with a local change -> "to push"), remember it as last
+  // opened, and add one with a missing folder.
+  const seeded = config.addProject({ name: 'Inspect', path: inspectRepo, remoteUrl: 'https://example.com/already.git' });
+  config.setSettings({ lastProjectId: seeded.id });
+  config.addProject({ name: 'Gone', path: path.join(os.tmpdir(), 'laes-missing-' + process.pid), remoteUrl: '' });
+
   win = new BrowserWindow({
     show: false,
     webPreferences: {
@@ -132,6 +143,17 @@ app.whenReady().then(() => {
           const sidebar = document.querySelector('.sidebar-head h2');
           out.sidebarAfterIdentity = sidebar ? sidebar.textContent.trim() : null;
 
+          // The last project must be re-opened automatically (no Welcome card).
+          out.projectAutoOpened = !!document.querySelector('.tabs');
+          out.welcomeShown = !!document.querySelector('.content .welcome');
+          // Sidebar state icons + legend.
+          const stateGlyphs = Array.from(document.querySelectorAll('.project-item .state')).map((el) => el.textContent.trim());
+          out.hasUnpushedIcon = stateGlyphs.indexOf('🟠') !== -1;
+          out.hasMissingIcon = stateGlyphs.indexOf('⚠️') !== -1;
+          out.legendItems = document.querySelectorAll('.legend .legend-item').length;
+          const statusesRes = await window.api.projects.statuses();
+          out.statusesCount = statusesRes.statuses ? statusesRes.statuses.length : 0;
+
           // Open the settings dialog: language switch + identity prefilled + ESC.
           const gear = document.querySelector('.topbar .icon-btn');
           if (gear) gear.click();
@@ -150,6 +172,36 @@ app.whenReady().then(() => {
           await wait(200);
           out.escClosedSettings = !document.querySelector('.overlay');
 
+          // Header logo (link to local-ai-experts.com) must load.
+          const logoImg = document.querySelector('.topbar .brand-logo');
+          out.brandLogoLoaded = !!(logoImg && logoImg.complete && logoImg.naturalWidth > 0);
+          out.brandLogoInLink = !!(logoImg && logoImg.closest('a') && /local-ai-experts\.com/.test(logoImg.closest('a').href));
+          // Sidebar must show the project name only, not the real path.
+          out.sidebarShowsPath = !!document.querySelector('.sidebar .ppath');
+
+          // Tabs: an unvalidated project must open the "Git configuration" tab first.
+          const projBtn = document.querySelector('.sidebar .project-item');
+          if (projBtn) projBtn.click();
+          await wait(500);
+          const activeTab = document.querySelector('.tab.active');
+          out.activeTabText = activeTab ? activeTab.textContent.replace('●', '').trim() : null;
+          out.tabDotPresent = !!document.querySelector('.tab-dot');
+          out.verifyButtonPresent = Array.from(document.querySelectorAll('button')).some((b) => /Verify authentication/.test(b.textContent));
+          const syncTab = Array.from(document.querySelectorAll('.tab')).find((tk) => tk.textContent.trim() === 'Sync');
+          if (syncTab) syncTab.click();
+          await wait(200);
+          const activeTab2 = document.querySelector('.tab.active');
+          out.syncTabText = activeTab2 ? activeTab2.textContent.trim() : null;
+
+          // Pull safety: blocked while local changes exist (default on).
+          const allSettings = await window.api.settings.get();
+          out.blockPullDefault = allSettings.settings.blockPullWithLocalChanges === true;
+          const created = await window.api.projects.create({ path: ${JSON.stringify(inspectRepo)}, name: 'Inspect2' });
+          out.createdOk = !!(created && created.ok);
+          const pullRes = await window.api.project.pull(created.project.id);
+          out.pullBlocked = pullRes.ok === false && pullRes.blocked === true;
+          out.pullBlockedTitle = pullRes.message && pullRes.message.title;
+
           return out;
         })()
       `);
@@ -164,10 +216,22 @@ app.whenReady().then(() => {
         ['identity prompt shown when unset', result.identityPromptShown === true],
         ['identity saved to git config', result.savedIdentity === 'Test User|test@example.com'],
         ['UI is French after identity setup', result.sidebarAfterIdentity === 'Vos projets'],
+        ['last project reopened automatically (no Welcome)', result.projectAutoOpened === true && result.welcomeShown === false],
+        ['sidebar shows a "to push" state icon', result.hasUnpushedIcon === true],
+        ['sidebar shows a "not found" icon for a missing project', result.hasMissingIcon === true],
+        ['sidebar legend has 4 entries', result.legendItems === 4],
+        ['projects:statuses returns a state per project', result.statusesCount === 2],
         ['settings dialog opens from top-bar button', result.settingsOpened === true],
         ['settings shows saved identity', result.identityPrefilled === 'Test User'],
         ['UI is English after switching back', result.sidebarAfterEn === 'Your projects'],
         ['ESC cancels the popup', result.escClosedSettings === true],
+        ['header logo loaded from local-ai-experts.com link', result.brandLogoLoaded === true && result.brandLogoInLink === true],
+        ['sidebar shows name only (no real path)', result.sidebarShowsPath === false],
+        ['unvalidated project opens Git configuration tab first', result.activeTabText === 'Git configuration' && result.tabDotPresent === true],
+        ['verify authentication button present', result.verifyButtonPresent === true],
+        ['can switch to the Sync tab', result.syncTabText === 'Sync'],
+        ['block Pull with local changes is on by default', result.blockPullDefault === true],
+        ['Pull is blocked while local changes exist', result.pullBlocked === true && result.pullBlockedTitle === 'Pull is blocked'],
         ['existing Git repo detected on add', result.inspectIsRepo === true],
         ['existing remote URL surfaced', result.inspectRemote === 'https://example.com/already.git'],
         ['existing identity surfaced', result.inspectIdentity === 'Repo Owner'],
