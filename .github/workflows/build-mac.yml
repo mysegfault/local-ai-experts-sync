@@ -1,9 +1,8 @@
 name: Build macOS
 
+# macOS builds are currently not published: the app is not usable on macOS yet.
+# Keep this workflow manual-only so it is never started by a release tag.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:

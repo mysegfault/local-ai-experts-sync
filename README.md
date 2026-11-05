@@ -16,15 +16,13 @@ Get the latest release for your computer from the
 
 - **GNU/Linux** — `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
 - **Windows** — `…-Setup.exe` (installer) or `…-portable.exe` (no install)
-- **macOS** — `.dmg` (requires macOS 13+)
 
-> ⚠️ **The apps are not code-signed, and the macOS app never will be.** We will
-> never buy an Apple Developer Program licence, so there is no Apple certificate
-> to sign or notarize with. On first launch:
+> ⚠️ **The apps are not code-signed.** On first launch:
 >
-> - **macOS** — right-click the app → **Open**, or run
->   `xattr -cr "/Applications/Local AI Experts Sync.app"`.
 > - **Windows** — if SmartScreen appears, click **More info → Run anyway**.
+
+> macOS builds are **not published at the moment** (the app does not work
+> correctly on macOS yet).
 
 ---
 
@@ -98,12 +96,11 @@ Uses [electron-builder](https://www.electron.build/):
 
 ```bash
 npm run dist:win     # Windows (NSIS + portable)
-npm run dist:mac     # macOS (.dmg)
 npm run dist:linux   # Linux (AppImage + deb)
 ```
 
-> The macOS build is **intentionally never signed or notarized** — we will never
-> buy an Apple Developer Program licence. Electron 44 also requires macOS 13+.
+> macOS builds are not published at the moment: the app does not work
+> correctly on macOS yet.
 
 ## Tests
 
