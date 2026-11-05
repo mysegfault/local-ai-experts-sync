@@ -133,6 +133,45 @@ async function main() {
   const mappedC = messages.friendlyError(pullC, 'x');
   check('no-upstream pull gives friendly guidance', /not connected|not have|server/i.test(mappedC.detail), mappedC.title);
 
+  // ---- folder containing only .git: recover the project files ----
+  const workD = path.join(tmp, 'workD');
+  fs.mkdirSync(workD);
+  await git.init(workD);
+  await git.setRemote(workD, remote);
+  const stD = await git.status(workD);
+  check('repo with only .git is initial', stD.ok && stD.data.initial === true, 'initial=' + (stD.data && stD.data.initial));
+  const restored = await git.restoreSources(workD, { mode: 'none' }, stD.data.branch);
+  check('restoreSources succeeds', restored.ok, (restored.stderr || '').trim().split('\n')[0]);
+  check('restoreSources writes the project files', fs.existsSync(path.join(workD, 'hello.txt')));
+  const stD2 = await git.status(workD);
+  check('restoreSources sets the upstream branch', stD2.ok && !!stD2.data.upstream, 'upstream=' + (stD2.data && stD2.data.upstream));
+
+  // ---- diff generation for the integrated viewer ----
+  fs.writeFileSync(path.join(workD, 'hello.txt'), 'hello world\nchanged line\n');
+  const diffTracked = await git.projectDiff(workD, 'hello.txt');
+  check(
+    'projectDiff returns a tracked-file diff',
+    diffTracked.ok && diffTracked.files.length === 1 && /^\+changed line$/m.test(diffTracked.files[0].diff),
+    diffTracked.files && diffTracked.files[0] ? diffTracked.files[0].diff.split('\n').slice(0, 3).join(' | ') : ''
+  );
+  fs.writeFileSync(path.join(workD, 'brand-new.txt'), 'brand new file\n');
+  const diffNew = await git.projectDiff(workD, 'brand-new.txt');
+  check(
+    'projectDiff renders untracked files as new',
+    diffNew.ok && diffNew.files.length === 1 && /^\+brand new file$/m.test(diffNew.files[0].diff)
+  );
+  const diffAll = await git.projectDiff(workD, '');
+  check('projectDiff lists every change', diffAll.ok && diffAll.files.length >= 2, 'files=' + (diffAll.files && diffAll.files.length));
+
+  // ---- every command is recorded for the activity log ----
+  const activity = git.getActivity();
+  check('activity log records commands', activity.length > 0, 'entries=' + activity.length);
+  const last = activity[activity.length - 1];
+  check(
+    'activity entries contain command, output and result',
+    !!last.command && typeof last.ok === 'boolean' && typeof last.stdout === 'string' && typeof last.stderr === 'string'
+  );
+
   const failed = results.filter((r) => !r.ok);
   console.log('\n' + (failed.length ? 'FAILED ' + failed.length + ' / ' + results.length : 'ALL ' + results.length + ' CHECKS PASSED'));
   app.exit(failed.length ? 1 : 0);

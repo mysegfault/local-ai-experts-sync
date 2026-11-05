@@ -28,6 +28,31 @@
     'dialog.pickFolder.title': 'Choose a project folder',
     'dialog.pickKey.title': 'Choose your SSH private key',
 
+    /* ---- command log ---- */
+    'activity.button': 'Command log',
+    'activity.title': 'Git commands',
+    'activity.empty': 'No command run yet',
+    'activity.emptyHint': 'Every Git command and its output will appear here.',
+    'activity.count': '{count} command(s)',
+    'activity.clear': 'Clear',
+    'activity.noOutput': 'No output.',
+    'activity.details': 'Technical details',
+    'activity.label.detect': 'Git check',
+    'activity.label.inspect': 'Folder check',
+    'activity.label.init': 'Initialise',
+    'activity.label.remote': 'Read server address',
+    'activity.label.setRemote': 'Save server address',
+    'activity.label.identity': 'Identity',
+    'activity.label.status': 'Check files',
+    'activity.label.add': 'Prepare changes',
+    'activity.label.commit': 'Save changes',
+    'activity.label.fetch': 'Check server',
+    'activity.label.pull': 'Download',
+    'activity.label.push': 'Upload',
+    'activity.label.lsRemote': 'Test server',
+    'activity.label.branches': 'Server branches',
+    'activity.label.checkout': 'Restore files',
+
     /* ---- settings ---- */
     'settings.button': 'Settings',
     'settings.title': 'App settings',
@@ -108,6 +133,11 @@
     'project.push': 'Push',
     'project.pushDesc': 'Send your changes up to the server',
 
+    'sources.title': 'Recover the project files',
+    'sources.sub':
+      'This folder only contains Git metadata (.git). The server address is known, so we can download the project files into this folder.',
+    'sources.button': 'Download project files',
+
     'files.title': 'Your files',
     'files.sub': 'These are the changes on your computer that Git has noticed.',
     'files.none': 'No local changes right now.',
@@ -117,6 +147,25 @@
     'files.notConnected': 'Not connected to the server branch yet',
     'files.newerOnServer': 'Newer on server:',
     'files.waitingUpload': 'Waiting to upload:',
+
+    /* ---- diffs ---- */
+    'diff.button': 'See differences',
+    'diff.view': 'View',
+    'diff.title': 'Differences',
+    'diff.fileCount': '{count} changed file(s)',
+    'diff.close': 'Close',
+    'diff.empty': 'No differences to display.',
+    'diff.noChanges': 'No local changes to compare.',
+    'diff.binary': 'Binary file: differences cannot be shown as text.',
+    'diff.tooLarge': 'This file is too large to display in the app.',
+    'diff.truncated': 'The difference was shortened because it is very large.',
+    'diff.openExternal': 'Open in {tool}',
+    'diff.externalFailed.title': 'Could not open the comparison tool',
+    'diff.externalFailed.detail': 'The external tool could not be started. The integrated comparison is still available.',
+    'diff.externalUntracked': 'New files cannot be compared with an external tool yet. Use the integrated view.',
+    'diff.externalNotChanged': 'This file has no changes to compare.',
+    'diff.oldLine': 'Old',
+    'diff.newLine': 'New',
 
     'server.title': 'Git server address',
     'server.sub': 'The web address (remote URL) of your project. Ask whoever set up your project if you are unsure.',
@@ -206,6 +255,8 @@
     'add.alreadyGit.title': 'This folder is already a Git project.',
     'add.alreadyGit.withRemote': 'We found its server address and filled it in below.',
     'add.alreadyGit.noRemote': 'No server address is set yet — you can add one below.',
+    'add.alreadyGit.initial':
+      'This project has no files yet (only the .git folder). After adding it, use "Download project files" on the Sync tab.',
 
     /* ---- push modal ---- */
     'push.title': 'Describe your changes',
@@ -297,6 +348,11 @@
     'main.pulled.detail': 'Your folder now matches the server. You can open your files and start working.',
     'main.pushed.title': 'Uploaded to the server',
     'main.pushed.detail': 'Your changes are now saved on the server for everyone to see.',
+    'main.sourcesAvailable.title': 'The project files are not downloaded yet',
+    'main.sourcesAvailable.detail':
+      'This folder only contains the .git folder. Click "Download project files" to get the project content from the server.',
+    'main.sourcesRestored.title': 'Project files downloaded',
+    'main.sourcesRestored.detail': 'The files from branch {branch} are now in your folder.',
     'main.alreadyUpToDate.title': 'Already up to date',
     'main.alreadyUpToDate.detail': 'There is nothing new to upload. The server already has your latest changes.',
     'main.notSavedYet.title': 'You have not saved any changes yet',
@@ -346,6 +402,31 @@
     'common.language': 'Langue',
     'dialog.pickFolder.title': 'Choisir un dossier de projet',
     'dialog.pickKey.title': 'Choisir votre clé privée SSH',
+
+    /* ---- journal des commandes ---- */
+    'activity.button': 'Journal des commandes',
+    'activity.title': 'Commandes Git',
+    'activity.empty': 'Aucune commande lancée pour le moment',
+    'activity.emptyHint': 'Chaque commande Git et sa sortie apparaîtront ici.',
+    'activity.count': '{count} commande(s)',
+    'activity.clear': 'Effacer',
+    'activity.noOutput': 'Aucune sortie.',
+    'activity.details': 'Détails techniques',
+    'activity.label.detect': 'Vérification de Git',
+    'activity.label.inspect': 'Vérification du dossier',
+    'activity.label.init': 'Initialisation',
+    'activity.label.remote': 'Lecture de l’adresse du serveur',
+    'activity.label.setRemote': 'Enregistrement de l’adresse du serveur',
+    'activity.label.identity': 'Identité',
+    'activity.label.status': 'Vérification des fichiers',
+    'activity.label.add': 'Préparation des modifications',
+    'activity.label.commit': 'Enregistrement des modifications',
+    'activity.label.fetch': 'Vérification du serveur',
+    'activity.label.pull': 'Téléchargement',
+    'activity.label.push': 'Envoi',
+    'activity.label.lsRemote': 'Test du serveur',
+    'activity.label.branches': 'Branches du serveur',
+    'activity.label.checkout': 'Récupération des fichiers',
 
     /* ---- settings ---- */
     'settings.button': 'Paramètres',
@@ -427,6 +508,11 @@
     'project.push': 'Envoyer',
     'project.pushDesc': 'Envoyer vos modifications vers le serveur',
 
+    'sources.title': 'Récupérer les fichiers du projet',
+    'sources.sub':
+      'Ce dossier ne contient que les métadonnées Git (.git). L’adresse du serveur est connue : nous pouvons donc télécharger les fichiers du projet dans ce dossier.',
+    'sources.button': 'Télécharger les fichiers du projet',
+
     'files.title': 'Vos fichiers',
     'files.sub': 'Voici les modifications que Git a remarquées sur votre ordinateur.',
     'files.none': 'Aucune modification locale pour le moment.',
@@ -436,6 +522,25 @@
     'files.notConnected': 'Pas encore relié à la branche du serveur',
     'files.newerOnServer': 'Plus récent sur le serveur :',
     'files.waitingUpload': "En attente d'envoi :",
+
+    /* ---- différences ---- */
+    'diff.button': 'Voir les différences',
+    'diff.view': 'Voir',
+    'diff.title': 'Différences',
+    'diff.fileCount': '{count} fichier(s) modifié(s)',
+    'diff.close': 'Fermer',
+    'diff.empty': 'Aucune différence à afficher.',
+    'diff.noChanges': 'Aucune modification locale à comparer.',
+    'diff.binary': 'Fichier binaire : les différences ne peuvent pas être affichées en texte.',
+    'diff.tooLarge': 'Ce fichier est trop volumineux pour être affiché dans l’application.',
+    'diff.truncated': 'La différence a été raccourcie car elle est très volumineuse.',
+    'diff.openExternal': 'Ouvrir dans {tool}',
+    'diff.externalFailed.title': 'Impossible d’ouvrir l’outil de comparaison',
+    'diff.externalFailed.detail': 'L’outil externe n’a pas pu être lancé. La comparaison intégrée reste disponible.',
+    'diff.externalUntracked': 'Les nouveaux fichiers ne peuvent pas encore être comparés avec un outil externe. Utilisez la vue intégrée.',
+    'diff.externalNotChanged': 'Ce fichier n’a aucune modification à comparer.',
+    'diff.oldLine': 'Ancien',
+    'diff.newLine': 'Nouveau',
 
     'server.title': 'Adresse du serveur git',
     'server.sub': "L'adresse web (URL distante) de votre projet. Demandez-la à la personne qui a configuré votre projet si vous avez un doute.",
@@ -525,6 +630,8 @@
     'add.alreadyGit.title': 'Ce dossier est déjà un projet Git.',
     'add.alreadyGit.withRemote': 'Nous avons trouvé son adresse de serveur et l\u2019avons remplie ci-dessous.',
     'add.alreadyGit.noRemote': 'Aucune adresse de serveur n\u2019est encore définie — vous pouvez en ajouter une ci-dessous.',
+    'add.alreadyGit.initial':
+      'Ce projet n\u2019a encore aucun fichier (seulement le dossier .git). Après l\u2019avoir ajouté, utilisez « Télécharger les fichiers du projet » dans l\u2019onglet Synchronisation.',
 
     /* ---- push modal ---- */
     'push.title': 'Décrivez vos modifications',
@@ -616,6 +723,11 @@
     'main.pulled.detail': 'Votre dossier correspond désormais au serveur. Vous pouvez ouvrir vos fichiers et commencer à travailler.',
     'main.pushed.title': 'Téléversé vers le serveur',
     'main.pushed.detail': 'Vos modifications sont maintenant enregistrées sur le serveur, visibles par tous.',
+    'main.sourcesAvailable.title': 'Les fichiers du projet ne sont pas encore téléchargés',
+    'main.sourcesAvailable.detail':
+      'Ce dossier ne contient que le dossier .git. Cliquez sur « Télécharger les fichiers du projet » pour récupérer le contenu depuis le serveur.',
+    'main.sourcesRestored.title': 'Fichiers du projet téléchargés',
+    'main.sourcesRestored.detail': 'Les fichiers de la branche {branch} sont maintenant dans votre dossier.',
     'main.alreadyUpToDate.title': 'Déjà à jour',
     'main.alreadyUpToDate.detail': 'Il n\u2019y a rien de nouveau à téléverser. Le serveur a déjà vos dernières modifications.',
     'main.notSavedYet.title': 'Vous n\u2019avez encore rien enregistré',

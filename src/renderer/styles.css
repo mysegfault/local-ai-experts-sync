@@ -651,6 +651,14 @@ textarea {
 }
 
 /* ---------- changes ---------- */
+.files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .change-list {
   list-style: none;
   margin: 0;
@@ -702,7 +710,12 @@ textarea {
 }
 
 .change-item .path {
+  flex: 1;
   word-break: break-all;
+}
+
+.change-diff {
+  flex: none;
 }
 
 .branch-info {
@@ -716,6 +729,151 @@ textarea {
 
 .branch-info b {
   color: var(--ink);
+}
+
+/* ---------- diff viewer ---------- */
+.diff-modal {
+  max-width: 1000px;
+}
+
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.diff-toolbar select {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.diff-file-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.diff-file-head .tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.diff-file-head .tag.new {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.diff-file-head .tag.deleted,
+.diff-file-head .tag.conflict {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.diff-note {
+  margin: 8px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.diff-view {
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.diff-line {
+  display: flex;
+  min-width: max-content;
+}
+
+.diff-line .diff-no {
+  flex: none;
+  width: 48px;
+  padding: 0 8px;
+  text-align: right;
+  color: #64748b;
+  background: #0b1220;
+  border-right: 1px solid #1e293b;
+  user-select: none;
+}
+
+.diff-line .diff-text {
+  flex: 1;
+  padding: 0 10px;
+  white-space: pre;
+}
+
+.diff-line.diff-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1e293b;
+  color: #93c5fd;
+  font-weight: 600;
+}
+
+.diff-line.add {
+  background: rgba(22, 163, 74, 0.18);
+}
+
+.diff-line.add .diff-text {
+  color: #86efac;
+}
+
+.diff-line.del {
+  background: rgba(220, 38, 38, 0.18);
+}
+
+.diff-line.del .diff-text {
+  color: #fca5a5;
+}
+
+.diff-line.hunk {
+  background: #1e293b;
+  color: #93c5fd;
+}
+
+.diff-line.hunk .diff-text {
+  padding: 2px 10px;
+}
+
+.diff-line.meta {
+  color: #94a3b8;
+}
+
+.diff-line.ctx .diff-text {
+  color: #cbd5e1;
+}
+
+.diff-line.blank {
+  height: 1.5em;
+}
+
+.diff-empty {
+  margin: 0;
+  padding: 12px;
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 12.5px;
 }
 
 /* ---------- welcome / missing ---------- */
@@ -929,4 +1087,222 @@ textarea {
   min-height: 100%;
   gap: 12px;
   color: var(--ink-soft);
+}
+
+/* ---------- inline technical details (error banners) ---------- */
+.banner .raw-details {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+.banner .raw-details summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.banner .raw-details pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.06);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+/* ---------- "only .git" recovery card ---------- */
+.sources-card {
+  border-color: #bfdbfe;
+  background: var(--info-bg);
+}
+
+/* ---------- command log drawer ---------- */
+.activity {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #1e293b;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.activity-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 12.5px;
+  color: #cbd5e1;
+  background: #0f172a;
+}
+
+.activity-bar:hover {
+  background: #16213a;
+}
+
+.activity-heading {
+  flex: none;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.activity-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.activity-cmd {
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #93c5fd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.activity-badge.ok {
+  background: #14532d;
+  color: #86efac;
+}
+
+.activity-badge.error {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+
+.activity-time {
+  flex: none;
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.activity-kind {
+  flex: none;
+  color: #fbbf24;
+  font-size: 11.5px;
+}
+
+.activity-chevron {
+  flex: none;
+  margin-left: auto;
+  color: #94a3b8;
+}
+
+.activity-toggle.attention {
+  box-shadow: inset 0 0 0 2px #fecaca;
+}
+
+.activity-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 45vh;
+  border-top: 1px solid #1e293b;
+}
+
+.activity-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #111c33;
+}
+
+.activity-toolbar .spacer {
+  flex: 1;
+}
+
+.activity-toolbar .btn {
+  border-color: #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.activity-toolbar .btn:hover {
+  background: #273449;
+}
+
+.activity-count {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.activity-body {
+  overflow-y: auto;
+  padding: 6px 12px 12px;
+}
+
+.activity-empty {
+  margin: 6px 0;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+.activity-entry {
+  padding: 8px 0;
+  border-bottom: 1px solid #1e293b;
+}
+
+.activity-entry:last-child {
+  border-bottom: none;
+}
+
+.activity-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-entry-head .activity-cmd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.activity-cwd {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.activity-out,
+.activity-err {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.activity-out {
+  background: #0b1220;
+  color: #cbd5e1;
+}
+
+.activity-err {
+  background: #3f1212;
+  color: #fecaca;
 }

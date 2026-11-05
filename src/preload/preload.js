@@ -40,5 +40,15 @@ contextBridge.exposeInMainWorld('api', {
     pull: (id) => invoke('project:pull', id),
     push: (payload) => invoke('project:push', payload),
     commit: (payload) => invoke('project:commit', payload),
+    restoreSources: (id) => invoke('project:restore-sources', id),
+    diff: (payload) => invoke('project:diff', payload),
+    openDiffTool: (payload) => invoke('project:open-diff-tool', payload),
+  },
+  activity: {
+    list: () => invoke('activity:list'),
+    clear: () => invoke('activity:clear'),
+    onEntry: (callback) => {
+      ipcRenderer.on('activity:entry', (_event, entry) => callback(entry));
+    },
   },
 });

@@ -1,7 +1,7 @@
 {
   "name": "local-ai-experts-sync",
   "productName": "Local AI Experts Sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A friendly cross-platform Git sync app for non-technical users",
   "main": "src/main/main.js",
   "author": "Local AI Experts",

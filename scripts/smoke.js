@@ -206,9 +206,35 @@ app.whenReady().then(() => {
           out.blockPullDefault = allSettings.settings.blockPullWithLocalChanges === true;
           const created = await window.api.projects.create({ path: ${JSON.stringify(inspectRepo)}, name: 'Inspect2' });
           out.createdOk = !!(created && created.ok);
+          out.needsSourcesDetected = !!(created && created.needsSources);
           const pullRes = await window.api.project.pull(created.project.id);
           out.pullBlocked = pullRes.ok === false && pullRes.blocked === true;
           out.pullBlockedTitle = pullRes.message && pullRes.message.title;
+
+          // Every Git command must be visible in the command log.
+          const act = await window.api.activity.list();
+          out.activityEntries = act && act.ok ? act.entries.length : 0;
+          out.activityHasCommand = !!(act && act.entries && act.entries.some((e) => e.command === 'git' && Array.isArray(e.args)));
+          out.activityBarPresent = !!document.querySelector('.activity-bar');
+          out.activityTogglePresent = !!document.querySelector('.topbar .activity-toggle');
+
+          // Integrated diff viewer: a button must be available and the API must
+          // return the unified diff for a local change.
+          out.diffButtonPresent = Array.from(document.querySelectorAll('button')).some((b) => /See differences/.test(b.textContent));
+          out.diffApiPresent = typeof window.api.project.diff === 'function' && typeof window.api.project.openDiffTool === 'function';
+          const diffRes = await window.api.project.diff({ id: created.project.id, path: 'local-change.txt' });
+          out.diffOk = !!(diffRes && diffRes.ok);
+          out.diffHasContent = !!(diffRes && diffRes.files && diffRes.files.length === 1 && diffRes.files[0].diff.indexOf('+work in progress') !== -1);
+
+          // Open the integrated viewer from the Sync tab.
+          const syncTab2 = Array.from(document.querySelectorAll('.tab')).find((tk) => tk.textContent.trim() === 'Sync');
+          if (syncTab2) syncTab2.click();
+          await wait(300);
+          const diffBtn = document.querySelector('.change-diff');
+          if (diffBtn) diffBtn.click();
+          await wait(500);
+          out.diffModalShown = !!document.querySelector('.diff-modal');
+          out.diffAddedLineRendered = !!document.querySelector('.diff-modal .diff-line.add');
 
           return out;
         })()
@@ -242,6 +268,13 @@ app.whenReady().then(() => {
         ['project tab offers a terminal button', result.terminalButtonPresent === true],
         ['block Pull with local changes is on by default', result.blockPullDefault === true],
         ['Pull is blocked while local changes exist', result.pullBlocked === true && result.pullBlockedTitle === 'Pull is blocked'],
+        ['a folder with only .git is detected as needing sources', result.needsSourcesDetected === true],
+        ['command log records Git commands', result.activityEntries > 0 && result.activityHasCommand === true],
+        ['command log bar and top-bar toggle are visible', result.activityBarPresent === true && result.activityTogglePresent === true],
+        ['"See differences" button is present when files changed', result.diffButtonPresent === true],
+        ['diff API is exposed', result.diffApiPresent === true],
+        ['diff API returns the changed lines', result.diffOk === true && result.diffHasContent === true],
+        ['integrated diff viewer opens and renders added lines', result.diffModalShown === true && result.diffAddedLineRendered === true],
         ['existing Git repo detected on add', result.inspectIsRepo === true],
         ['existing remote URL surfaced', result.inspectRemote === 'https://example.com/already.git'],
         ['existing identity surfaced', result.inspectIdentity === 'Repo Owner'],

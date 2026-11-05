@@ -61,6 +61,18 @@ simple words, in English or French.
   everything is up to date.
 - **Pull safety for beginners** — optional (default on) protection that blocks
   **Pull** while there are local changes, to avoid conflicts.
+- **Command log** — every Git command launched by the app is visible at the
+  bottom of the window, with its exit code, duration, standard output and
+  errors. Error banners also expose the raw Git message under "Technical
+  details", so nothing fails silently.
+- **Recover missing project files** — if a project folder only contains a
+  `.git` directory (repository metadata without a working tree), the Sync tab
+  offers a one-click **Download project files** action that fetches the server
+  branch and checks it out.
+- **Visual differences** — when files are modified, **See differences** opens an
+  integrated diff viewer with added/removed line colours and line numbers.
+  If **Meld** (or KDiff3) is installed, the same diff can also be opened in that
+  external tool.
 - **Sidebar status icons + legend** — 🟢 up to date, 🟠 changes to push,
   🔵 changes to pull, ⚠️ project not found.
 - **Remembers the last project** and re-opens it on startup (falls back to the

@@ -27,6 +27,9 @@ const MessageBanner = {
     dismissLabel() {
       return I18n.t(this.lang, 'common.dismiss');
     },
+    detailsLabel() {
+      return I18n.t(this.lang, 'activity.details');
+    },
   },
   template: `
     <div :class="cls">
@@ -34,6 +37,10 @@ const MessageBanner = {
       <div class="body">
         <p class="title">{{ message.title }}</p>
         <p class="detail" v-if="message.detail">{{ message.detail }}</p>
+        <details class="raw-details" v-if="message.raw">
+          <summary>{{ detailsLabel }}</summary>
+          <pre>{{ message.raw }}</pre>
+        </details>
       </div>
       <button v-if="dismissible" class="close" :title="dismissLabel" @click="$emit('dismiss')">✕</button>
     </div>
@@ -273,9 +280,33 @@ const app = createApp({
       deleteConfirm: false,
       settingsModal: false,
       activeTab: 'sync',
+      activity: [],
+      activityOpen: false,
+      needsSources: false,
+      diffModal: false,
+      diffLoading: false,
+      diffError: '',
+      diffFiles: [],
+      diffSelected: '',
+      diffExternal: { available: false, tool: '' },
+      diffExternalBusy: false,
+      diffExternalError: '',
     };
   },
   computed: {
+    latestActivity() {
+      return this.activity.length ? this.activity[this.activity.length - 1] : null;
+    },
+    activityHasError() {
+      return this.activity.some((e) => !e.ok && this.isActionLabel(e.label));
+    },
+    currentDiffFile() {
+      if (!this.diffFiles.length) return null;
+      return this.diffFiles.find((f) => f.path === this.diffSelected) || this.diffFiles[0];
+    },
+    currentDiffLines() {
+      return this.buildDiffLines(this.currentDiffFile ? this.currentDiffFile.diff : '');
+    },
     defaultLang() {
       return I18n.normalize(this.info && this.info.locale);
     },
@@ -308,6 +339,68 @@ const app = createApp({
     t(key, params) {
       return I18n.t(this.lang, key, params);
     },
+
+    /* ---- command log ---- */
+    isActionLabel(label) {
+      return ['fetch', 'pull', 'push', 'commit', 'add', 'init', 'setRemote', 'lsRemote', 'checkout', 'recover'].indexOf(label) !== -1;
+    },
+    activityLabel(entry) {
+      const known = [
+        'detect', 'inspect', 'init', 'remote', 'setRemote', 'identity', 'status',
+        'add', 'commit', 'fetch', 'pull', 'push', 'lsRemote', 'branches', 'checkout',
+      ];
+      return entry && entry.label && known.indexOf(entry.label) !== -1
+        ? this.t('activity.label.' + entry.label)
+        : '';
+    },
+    quoteArg(value) {
+      const text = String(value);
+      return /[\s"'`$\\]/.test(text) ? '"' + text.replace(/(["\\])/g, '\\$1') + '"' : text;
+    },
+    formatCommand(entry) {
+      if (!entry) return '';
+      return [entry.command].concat(entry.args || []).map(this.quoteArg).join(' ');
+    },
+    activityTime(timestamp) {
+      try {
+        return new Date(timestamp).toLocaleTimeString();
+      } catch (_) {
+        return '';
+      }
+    },
+    async initActivity() {
+      if (!bridge.activity) return;
+      bridge.activity.onEntry((entry) => this.receiveActivity(entry));
+      const res = await bridge.activity.list();
+      if (res && res.ok && Array.isArray(res.entries)) {
+        const seen = {};
+        this.activity.forEach((e) => { seen[e.id] = true; });
+        const merged = res.entries.filter((e) => !seen[e.id]).concat(this.activity);
+        merged.sort((a, b) => a.id - b.id);
+        this.activity = merged.slice(-300);
+      }
+    },
+    receiveActivity(entry) {
+      if (!entry || this.activity.some((e) => e.id === entry.id)) return;
+      this.activity.push(entry);
+      if (this.activity.length > 300) this.activity.splice(0, this.activity.length - 300);
+      // Make real failures visible right away, without popping up for the
+      // harmless probes (e.g. reading an unset Git setting).
+      if (!entry.ok && this.isActionLabel(entry.label)) this.activityOpen = true;
+      this.$nextTick(this.scrollActivity);
+    },
+    scrollActivity() {
+      const el = this.$refs.activityBody;
+      if (el) el.scrollTop = el.scrollHeight;
+    },
+    toggleActivity() {
+      this.activityOpen = !this.activityOpen;
+      if (this.activityOpen) this.$nextTick(this.scrollActivity);
+    },
+    async clearActivity() {
+      if (bridge.activity) await bridge.activity.clear();
+      this.activity = [];
+    },
     async boot() {
       this.booting = true;
       const [gitRes, infoRes, settingsRes] = await Promise.all([
@@ -327,6 +420,7 @@ const app = createApp({
         const idRes = await bridge.identity.get();
         if (idRes && idRes.ok) this.gitIdentity = { name: idRes.name || '', email: idRes.email || '' };
       }
+      await this.initActivity();
       await this.refreshProjects();
       // Re-open the last project (only if it still exists), otherwise show Welcome.
       if (this.lastProjectId) {
@@ -383,7 +477,8 @@ const app = createApp({
       await bridge.settings.set({ blockPullWithLocalChanges: this.blockPull });
     },
     closeTopModal() {
-      if (this.deleteConfirm) this.deleteConfirm = false;
+      if (this.diffModal) this.closeDiff();
+      else if (this.deleteConfirm) this.deleteConfirm = false;
       else if (this.pushModal) this.pushModal = false;
       else if (this.addModal) this.addModal = false;
       else if (this.settingsModal) this.settingsModal = false;
@@ -438,6 +533,7 @@ const app = createApp({
       this.banner = null;
       this.status = null;
       this.statusMessage = null;
+      this.needsSources = false;
       // Until the Git configuration is validated, open that tab first.
       this.activeTab = p.configValidated ? 'sync' : 'config';
       this.populateForms(p);
@@ -459,12 +555,14 @@ const app = createApp({
       this.busy = '';
       if (!res.ok) {
         this.statusMessage = res.message;
+        this.needsSources = false;
         this.setBanner(res.message);
         return;
       }
       this.status = res.data;
       this.counts = res.counts;
       this.statusMessage = res.message;
+      this.needsSources = !!res.needsSources;
       // Keep the sidebar icon in sync for the selected project.
       const state = this.computeState(res.data);
       this.projects = this.projects.map((p) => (p.id === this.selectedId ? Object.assign({}, p, { syncState: state }) : p));
@@ -472,6 +570,80 @@ const app = createApp({
     kindLabel(kind) {
       const known = ['new', 'added', 'modified', 'deleted', 'renamed', 'conflict', 'changed'];
       return this.t('change.' + (known.indexOf(kind) !== -1 ? kind : 'changed'));
+    },
+
+    /* ---- differences ---- */
+    buildDiffLines(text) {
+      if (!text) return [];
+      const lines = String(text).replace(/\r\n/g, '\n').split('\n');
+      if (lines.length && lines[lines.length - 1] === '') lines.pop();
+      const out = [];
+      let oldNo = 0;
+      let newNo = 0;
+      for (const raw of lines) {
+        if (/^@@ /.test(raw)) {
+          const m = raw.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+          if (m) {
+            oldNo = parseInt(m[1], 10);
+            newNo = parseInt(m[2], 10);
+          }
+          out.push({ type: 'hunk', text: raw, oldNo: '', newNo: '' });
+        } else if (/^(diff --git |index |--- |\+\+\+ |new file mode |deleted file mode |similarity index |rename from |rename to |old mode |new mode |Binary files )/.test(raw)) {
+          out.push({ type: 'meta', text: raw, oldNo: '', newNo: '' });
+        } else if (raw.startsWith('+')) {
+          out.push({ type: 'add', text: raw, oldNo: '', newNo });
+          newNo += 1;
+        } else if (raw.startsWith('-')) {
+          out.push({ type: 'del', text: raw, oldNo, newNo: '' });
+          oldNo += 1;
+        } else if (raw.startsWith(' ')) {
+          out.push({ type: 'ctx', text: raw, oldNo, newNo });
+          oldNo += 1;
+          newNo += 1;
+        } else if (raw.startsWith('\\')) {
+          out.push({ type: 'meta', text: raw, oldNo: '', newNo: '' });
+        } else {
+          out.push({ type: raw ? 'ctx' : 'blank', text: raw, oldNo: '', newNo: '' });
+        }
+      }
+      return out;
+    },
+    async openDiff(path) {
+      if (!this.selectedProject) return;
+      this.diffModal = true;
+      this.diffLoading = true;
+      this.diffError = '';
+      this.diffExternalError = '';
+      this.diffFiles = [];
+      this.diffSelected = '';
+      this.diffExternal = { available: false, tool: '' };
+      const res = await bridge.project.diff({ id: this.selectedId, path: path || '' });
+      this.diffLoading = false;
+      if (!res || !res.ok) {
+        this.diffError = (res && (res.error || (res.message && res.message.detail))) || this.t('main.generic.detail');
+        return;
+      }
+      this.diffFiles = res.files || [];
+      this.diffExternal = res.externalTool || { available: false, tool: '' };
+      this.diffSelected = this.diffFiles.length ? this.diffFiles[0].path : '';
+    },
+    closeDiff() {
+      this.diffModal = false;
+      this.diffExternalBusy = false;
+      this.diffExternalError = '';
+    },
+    async openExternalDiff() {
+      const file = this.currentDiffFile;
+      if (!file) return;
+      this.diffExternalBusy = true;
+      this.diffExternalError = '';
+      const res = await bridge.project.openDiffTool({ id: this.selectedId, path: file.path });
+      this.diffExternalBusy = false;
+      if (!res || !res.ok) {
+        if (res && res.reason === 'untracked') this.diffExternalError = this.t('diff.externalUntracked');
+        else if (res && res.reason === 'not-changed') this.diffExternalError = this.t('diff.externalNotChanged');
+        else this.diffExternalError = this.t('diff.externalFailed.detail');
+      }
     },
     platformLabel() {
       const p = this.info && this.info.platform;
@@ -507,7 +679,7 @@ const app = createApp({
       if (!this.newProject.path) return;
       const res = await bridge.project.inspect({ path: this.newProject.path });
       if (!res || !res.ok || !res.isRepo) return;
-      this.addRepoInfo = { isRepo: true, remoteUrl: res.remoteUrl || '' };
+      this.addRepoInfo = { isRepo: true, remoteUrl: res.remoteUrl || '', initial: !!res.initial };
       if (res.remoteUrl && !this.newProject.remoteUrl) this.newProject.remoteUrl = res.remoteUrl;
     },
     async createProject() {
@@ -530,7 +702,13 @@ const app = createApp({
       await this.refreshProjects();
       const created = this.projects.find((p) => p.id === res.project.id) || res.project;
       await this.selectProject(created);
-      if (res.initialized) {
+      if (res.needsSources) {
+        // A folder that only contains .git: take the user straight to the
+        // action that downloads the missing project files.
+        this.activeTab = 'sync';
+        this.needsSources = true;
+        this.setBanner({ tone: 'info', title: this.t('main.sourcesAvailable.title'), detail: this.t('main.sourcesAvailable.detail') });
+      } else if (res.initialized) {
         this.setBanner({ tone: 'ok', title: this.t('banner.folderReady.title'), detail: this.t('banner.folderReady.detail') });
       } else if (res.alreadyTracked && res.project.remoteUrl) {
         this.setBanner({ tone: 'ok', title: this.t('banner.alreadyGit.title'), detail: this.t('banner.alreadyGit.detail') });
@@ -623,6 +801,16 @@ const app = createApp({
       const res = await bridge.project.pull(this.selectedId);
       this.busy = '';
       this.setBanner(res.message);
+      if (res && res.restored) this.needsSources = false;
+      await this.refreshStatus();
+    },
+    async restoreSources() {
+      if (!this.selectedProject) return;
+      this.busy = 'restore';
+      const res = await bridge.project.restoreSources(this.selectedId);
+      this.busy = '';
+      this.setBanner(res.message || { tone: 'error', title: this.t('main.generic.title'), detail: this.t('main.generic.detail') });
+      if (res.ok) this.needsSources = false;
       await this.refreshStatus();
     },
     openPush() {
@@ -689,6 +877,7 @@ const app = createApp({
         <div class="spacer"></div>
         <span class="hint" v-if="info">{{ t('app.gitVersionHint', { version: git.version, platform: platformLabel() }) }}</span>
         <button class="icon-btn" :title="t('settings.button')" :aria-label="t('settings.button')" @click="openSettings">⚙️</button>
+        <button class="icon-btn activity-toggle" :class="{ attention: activityHasError }" :title="t('activity.button')" :aria-label="t('activity.button')" @click="toggleActivity">🖥️</button>
       </div>
 
       <div class="main">
@@ -853,6 +1042,15 @@ const app = createApp({
               <div v-show="activeTab === 'sync'">
                 <message-banner v-if="statusMessage" :message="statusMessage" :lang="lang" :dismissible="false" />
 
+                <div class="card sources-card" v-if="needsSources">
+                  <h3>{{ t('sources.title') }}</h3>
+                  <p class="sub">{{ t('sources.sub') }}</p>
+                  <button class="btn btn-primary btn-lg" :disabled="!!busy" @click="restoreSources">
+                    <span class="spinner" v-if="busy === 'restore'"></span>
+                    <span v-else>⬇️ {{ t('sources.button') }}</span>
+                  </button>
+                </div>
+
                 <div class="sync-row">
                   <button class="sync-btn" :class="{ blocked: pullBlocked }" :disabled="!!busy || pullBlocked" @click="doPull">
                     <span class="glyph">{{ pullBlocked ? '🚫' : '⬇️' }}</span>
@@ -877,18 +1075,22 @@ const app = createApp({
                 </div>
 
                 <div class="card">
-                  <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="files-head">
                     <div>
                       <h3>{{ t('files.title') }}</h3>
                       <p class="sub">{{ t('files.sub') }}</p>
                     </div>
-                    <button class="btn btn-sm" :disabled="!!busy" @click="refreshStatus">↻ {{ t('common.refresh') }}</button>
+                    <div class="actions-row">
+                      <button class="btn btn-sm" v-if="changes.length" :disabled="!!busy" @click="openDiff()">👁 {{ t('diff.button') }}</button>
+                      <button class="btn btn-sm" :disabled="!!busy" @click="refreshStatus">↻ {{ t('common.refresh') }}</button>
+                    </div>
                   </div>
 
                   <ul class="change-list" v-if="changes.length">
                     <li class="change-item" v-for="c in changes" :key="c.path">
                       <span class="tag" :class="c.kind">{{ kindLabel(c.kind) }}</span>
                       <span class="path">{{ c.path }}</span>
+                      <button class="btn btn-sm change-diff" @click="openDiff(c.path)">👁 {{ t('diff.view') }}</button>
                     </li>
                   </ul>
                   <p v-else style="color:var(--ink-soft);font-size:14px;margin:6px 0 0">
@@ -925,6 +1127,109 @@ const app = createApp({
         </main>
       </div>
 
+      <!-- COMMAND LOG -->
+      <div class="activity" :class="{ open: activityOpen }">
+        <button class="activity-bar" type="button" :aria-expanded="activityOpen ? 'true' : 'false'" @click="toggleActivity">
+          <span class="activity-heading">🖥️ {{ t('activity.title') }}</span>
+          <span class="activity-summary" v-if="latestActivity">
+            <span class="activity-badge" :class="latestActivity.ok ? 'ok' : 'error'">{{ latestActivity.ok ? '✓' : '✕' }} {{ latestActivity.code }}</span>
+            <code class="activity-cmd">{{ formatCommand(latestActivity) }}</code>
+            <span class="activity-time">{{ latestActivity.durationMs }} ms</span>
+          </span>
+          <span class="activity-summary" v-else>{{ t('activity.empty') }}</span>
+          <span class="activity-chevron">{{ activityOpen ? '▾' : '▴' }}</span>
+        </button>
+
+        <div class="activity-panel" v-show="activityOpen">
+          <div class="activity-toolbar">
+            <span class="activity-count">{{ t('activity.count', { count: activity.length }) }}</span>
+            <span class="spacer"></span>
+            <button class="btn btn-sm" :disabled="!activity.length" @click="clearActivity">{{ t('activity.clear') }}</button>
+            <button class="btn btn-sm" @click="toggleActivity">{{ t('common.dismiss') }}</button>
+          </div>
+          <div class="activity-body" ref="activityBody">
+            <p class="activity-empty" v-if="!activity.length">{{ t('activity.emptyHint') }}</p>
+            <div v-for="e in activity" :key="e.id" class="activity-entry" :class="e.ok ? 'ok' : 'error'">
+              <div class="activity-entry-head">
+                <span class="activity-badge" :class="e.ok ? 'ok' : 'error'">{{ e.ok ? '✓' : '✕' }} {{ e.code }}</span>
+                <code class="activity-cmd">{{ formatCommand(e) }}</code>
+                <span class="activity-kind" v-if="activityLabel(e)">{{ activityLabel(e) }}</span>
+                <span class="activity-time">{{ e.durationMs }} ms · {{ activityTime(e.timestamp) }}</span>
+              </div>
+              <div class="activity-cwd" v-if="e.cwd">{{ e.cwd }}</div>
+              <pre class="activity-out" v-if="e.stdout">{{ e.stdout }}</pre>
+              <pre class="activity-err" v-if="e.stderr">{{ e.stderr }}</pre>
+              <pre class="activity-err" v-if="!e.stdout && !e.stderr && !e.ok">{{ t('activity.noOutput') }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIFF VIEWER -->
+      <div class="overlay" v-if="diffModal" @click.self="closeDiff">
+        <div class="modal diff-modal">
+          <div class="modal-head">
+            <h3>{{ t('diff.title') }}</h3>
+            <p class="sub">
+              {{ selectedProject ? selectedProject.name : '' }}
+              <template v-if="diffFiles.length"> · {{ t('diff.fileCount', { count: diffFiles.length }) }}</template>
+            </p>
+          </div>
+          <div class="modal-body">
+            <div class="diff-toolbar" v-if="diffFiles.length">
+              <select v-model="diffSelected" :aria-label="t('diff.title')">
+                <option v-for="f in diffFiles" :key="f.path" :value="f.path">{{ f.path }}</option>
+              </select>
+              <button
+                class="btn btn-sm"
+                v-if="diffExternal.available && currentDiffFile && !currentDiffFile.untracked"
+                :disabled="diffExternalBusy"
+                @click="openExternalDiff"
+              >
+                <span class="spinner dark" v-if="diffExternalBusy"></span>
+                <span v-else>🖥️ {{ t('diff.openExternal', { tool: diffExternal.tool }) }}</span>
+              </button>
+            </div>
+
+            <p class="warn-note" v-if="diffExternalError" style="margin-top:0;margin-bottom:12px">{{ diffExternalError }}</p>
+
+            <div class="centered" style="min-height:160px" v-if="diffLoading">
+              <span class="spinner dark"></span>
+            </div>
+            <p class="warn-note" v-else-if="diffError" style="margin-top:0">{{ diffError }}</p>
+
+            <template v-else-if="currentDiffFile">
+              <div class="diff-file-head">
+                <span class="tag" :class="currentDiffFile.kind">{{ kindLabel(currentDiffFile.kind) }}</span>
+                <span class="path">{{ currentDiffFile.path }}</span>
+              </div>
+              <p class="diff-note" v-if="currentDiffFile.error">{{ currentDiffFile.error }}</p>
+              <p class="diff-note" v-else-if="currentDiffFile.binary">{{ t('diff.binary') }}</p>
+              <p class="diff-note" v-else-if="currentDiffFile.tooLarge">{{ t('diff.tooLarge') }}</p>
+              <div class="diff-view" v-else>
+                <div class="diff-line diff-head">
+                  <span class="diff-no">{{ t('diff.oldLine') }}</span>
+                  <span class="diff-no">{{ t('diff.newLine') }}</span>
+                  <span class="diff-text">{{ currentDiffFile.path }}</span>
+                </div>
+                <div v-for="(line, i) in currentDiffLines" :key="i" class="diff-line" :class="line.type">
+                  <span class="diff-no">{{ line.oldNo }}</span>
+                  <span class="diff-no">{{ line.newNo }}</span>
+                  <span class="diff-text">{{ line.text || ' ' }}</span>
+                </div>
+                <p class="diff-empty" v-if="!currentDiffLines.length">{{ t('diff.empty') }}</p>
+              </div>
+              <p class="diff-note" v-if="currentDiffFile.truncated">{{ t('diff.truncated') }}</p>
+            </template>
+
+            <p class="diff-note" v-else>{{ t('diff.noChanges') }}</p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-primary" @click="closeDiff">{{ t('diff.close') }}</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ADD PROJECT MODAL -->
       <div class="overlay" v-if="addModal" @click.self="closeAddModal">
         <div class="modal">
@@ -946,6 +1251,10 @@ const app = createApp({
                 <b>{{ t('add.alreadyGit.title') }}</b>
                 {{ addRepoInfo.remoteUrl ? t('add.alreadyGit.withRemote') : t('add.alreadyGit.noRemote') }}
               </span>
+            </div>
+            <div class="info-note" v-if="addRepoInfo && addRepoInfo.isRepo && addRepoInfo.initial">
+              <span class="info-note-icon">ℹ️</span>
+              <span>{{ t('add.alreadyGit.initial') }}</span>
             </div>
             <div class="field">
               <label>{{ t('add.name') }}</label>

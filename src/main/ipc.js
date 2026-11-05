@@ -7,6 +7,7 @@ const { ipcMain, dialog, app, shell } = require('electron');
 const config = require('./config');
 const credentials = require('./credentials');
 const git = require('./git');
+const difftool = require('./difftool');
 const messages = require('./messages');
 const terminal = require('./terminal');
 const I18n = require('../shared/i18n');
@@ -65,6 +66,20 @@ function safe(fn) {
 function registerIpc(getWindow) {
   mainWindowGetter = getWindow;
 
+  // Forward every Git command result to the renderer so the activity log stays
+  // live while the user works.
+  git.setActivityListener((entry) => {
+    try {
+      const win = mainWindowGetter();
+      if (win && typeof win.isDestroyed === 'function' && !win.isDestroyed() &&
+          win.webContents && typeof win.webContents.isDestroyed === 'function' && !win.webContents.isDestroyed()) {
+        win.webContents.send('activity:entry', entry);
+      }
+    } catch (_) {
+      /* the log must never break a Git operation */
+    }
+  });
+
   ipcMain.handle('app:info', safe(async () => {
     return {
       ok: true,
@@ -79,6 +94,15 @@ function registerIpc(getWindow) {
   ipcMain.handle('app:detect-git', safe(async () => {
     const result = await git.detect();
     return { ok: true, ...result };
+  }));
+
+  ipcMain.handle('activity:list', safe(async () => {
+    return { ok: true, entries: git.getActivity() };
+  }));
+
+  ipcMain.handle('activity:clear', safe(async () => {
+    git.clearActivity();
+    return { ok: true };
   }));
 
   ipcMain.handle('app:open-external', safe(async (_evt, url) => {
@@ -164,7 +188,7 @@ function registerIpc(getWindow) {
           const hasLocal = d.changes.length > 0 || d.ahead > 0;
           const hasRemote = d.behind > 0;
           if (hasLocal) state = 'unpushed';
-          else if (hasRemote) state = 'toPull';
+          else if (hasRemote || (d.initial && p.remoteUrl)) state = 'toPull';
         }
       }
       statuses.push({ id: p.id, state });
@@ -176,7 +200,7 @@ function registerIpc(getWindow) {
   // already a Git project and, if so, surface its existing remote and identity.
   ipcMain.handle('project:inspect', safe(async (_evt, payload) => {
     const dir = String((payload && payload.path) || '').trim();
-    const empty = { ok: true, isRepo: false, remoteUrl: '', identity: { name: '', email: '' } };
+    const empty = { ok: true, isRepo: false, remoteUrl: '', identity: { name: '', email: '' }, initial: false };
     if (!dir || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) return empty;
 
     const isRepo = await git.isRepo(dir);
@@ -184,11 +208,13 @@ function registerIpc(getWindow) {
 
     const remoteUrl = await git.getRemote(dir);
     const id = await git.getIdentity(dir);
+    const st = await git.status(dir);
     return {
       ok: true,
       isRepo: true,
       remoteUrl: remoteUrl || '',
       identity: { name: id.localName || id.name || '', email: id.localEmail || id.email || '' },
+      initial: !!(st.ok && st.data.initial),
     };
   }));
 
@@ -225,7 +251,16 @@ function registerIpc(getWindow) {
       auth: { mode: 'none', username: '', sshKeyPath: '' },
     });
 
-    return { ok: true, project: { ...created, hasSecret: false }, initialized, alreadyTracked: alreadyRepo };
+    const st = await git.status(dir);
+    const needsSources = !!(st.ok && st.data.initial && effectiveRemote);
+
+    return {
+      ok: true,
+      project: { ...created, hasSecret: false },
+      initialized,
+      alreadyTracked: alreadyRepo,
+      needsSources,
+    };
   }));
 
   ipcMain.handle('projects:update', safe(async (_evt, payload) => {
@@ -288,7 +323,57 @@ function registerIpc(getWindow) {
     if (!res.ok) {
       return { ok: false, message: messages.friendlyError({ stderr: res.error }, 'main.err.readProject.title') };
     }
-    return { ok: true, data: res.data, counts: git.summarizeChanges(res.data.changes), message: messages.describeStatus(res.data) };
+    // A folder can contain only a `.git` directory (for example after copying
+    // just the repository metadata): the server is known, but no files were
+    // checked out yet. Tell the interface so it can offer to restore them.
+    const needsSources = !!(res.data.initial && p.remoteUrl);
+    const message = needsSources
+      ? toast('info', 'main.sourcesAvailable.title', 'main.sourcesAvailable.detail')
+      : messages.describeStatus(res.data);
+    return { ok: true, data: res.data, counts: git.summarizeChanges(res.data.changes), message, needsSources };
+  }));
+
+  ipcMain.handle('project:diff', safe(async (_evt, payload) => {
+    const id = payload && payload.id;
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+    const res = await git.projectDiff(p.path, String((payload && payload.path) || ''));
+    if (!res.ok) return { ok: false, error: res.error || 'Could not read differences' };
+    return { ok: true, files: res.files || [], externalTool: difftool.detect() };
+  }));
+
+  ipcMain.handle('project:open-diff-tool', safe(async (_evt, payload) => {
+    const id = payload && payload.id;
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+    const filePath = String((payload && payload.path) || '');
+    const st = await git.status(p.path);
+    if (!st.ok) return { ok: false, error: st.error };
+    const change = (st.data.changes || []).find((c) => c.path === filePath);
+    if (!change) return { ok: false, available: true, reason: 'not-changed' };
+    if (change.untracked) return { ok: false, available: true, reason: 'untracked' };
+    return difftool.openDiff(p.path, filePath);
+  }));
+
+  ipcMain.handle('project:restore-sources', safe(async (_evt, id) => {
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+    if (!p.remoteUrl) return { ok: false, message: toast('warn', 'main.noRemote.title', 'main.noRemote.detail') };
+
+    const before = await git.status(p.path);
+    if (!before.ok) return { ok: false, message: messages.friendlyError({ stderr: before.error }, 'main.err.readProject.title') };
+    const preferred = before.data.branch || '';
+    const res = await git.restoreSources(p.path, credsFor(id), preferred);
+    if (!res.ok) return { ok: false, message: messages.friendlyError(res, 'main.err.download.title') };
+
+    const after = await git.status(p.path);
+    return {
+      ok: true,
+      restored: true,
+      branch: res.branch,
+      data: after.ok ? after.data : null,
+      message: toast('ok', 'main.sourcesRestored.title', 'main.sourcesRestored.detail', { branch: res.branch }),
+    };
   }));
 
   ipcMain.handle('project:test-connection', safe(async (_evt, payload) => {
@@ -322,6 +407,23 @@ function registerIpc(getWindow) {
     // Safety (on by default): never Pull over uncommitted local changes.
     if (config.getSettings().blockPullWithLocalChanges && st.ok && st.data.changes.length > 0) {
       return { ok: false, blocked: true, message: toast('warn', 'main.pullBlocked.title', 'main.pullBlocked.detail') };
+    }
+
+    // Empty repository with a known server: this is the "only .git" case.
+    // Fetch and check out the server branch instead of trying a plain pull
+    // (which has no upstream to pull from yet).
+    if (st.ok && st.data.initial) {
+      if (!p.remoteUrl) return { ok: false, message: toast('warn', 'main.noRemote.title', 'main.noRemote.detail') };
+      const restored = await git.restoreSources(p.path, credsFor(id), st.data.branch || '');
+      if (!restored.ok) return { ok: false, message: messages.friendlyError(restored, 'main.err.download.title') };
+      const afterRestore = await git.status(p.path);
+      return {
+        ok: true,
+        restored: true,
+        branch: restored.branch,
+        data: afterRestore.ok ? afterRestore.data : null,
+        message: toast('ok', 'main.sourcesRestored.title', 'main.sourcesRestored.detail', { branch: restored.branch }),
+      };
     }
 
     // Otherwise, save uncommitted work first so pulling cannot surprise the user.
