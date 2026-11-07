@@ -544,6 +544,21 @@ textarea {
   font-size: 13.5px;
 }
 
+.banner-action {
+  margin: 9px 0 0;
+}
+
+.banner-action a {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.banner-action a:hover {
+  color: var(--primary-dark);
+}
+
 .banner.ok {
   background: var(--ok-bg);
   border-color: #bbf7d0;

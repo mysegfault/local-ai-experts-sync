@@ -288,6 +288,16 @@
     'delete.sub': 'No project data is deleted. This only removes the shortcut inside this app — your files and the Git history on the computer stay exactly as they are.',
     'delete.confirm': 'Yes, remove',
 
+    /* ---- updates ---- */
+    'update.title': 'A new version is available',
+    'update.detail': 'Version {version} is ready. You are using version {current}.',
+    'update.download.default': 'Open the download page',
+    'update.download.win-installer': 'Download the Windows installer',
+    'update.download.win-portable': 'Download the portable version',
+    'update.download.linux-deb': 'Download the Debian package (.deb)',
+    'update.download.linux-appimage': 'Download the AppImage',
+    'update.download.mac-dmg': 'Download the macOS disk image',
+
     /* ---- renderer banners ---- */
     'banner.couldNotSave.title': 'Could not save',
     'banner.folderReady.title': 'Folder is ready',
@@ -680,6 +690,16 @@
     'delete.title': 'Retirer ce projet ?',
     'delete.sub': 'Aucune donnée du projet n\u2019est supprimée. Cela retire uniquement le raccourci dans cette application — vos fichiers et l\u2019historique Git sur l\u2019ordinateur restent intacts.',
     'delete.confirm': 'Oui, retirer',
+
+    /* ---- mises à jour ---- */
+    'update.title': 'Une nouvelle version est disponible',
+    'update.detail': 'La version {version} est disponible. Vous utilisez la version {current}.',
+    'update.download.default': 'Ouvrir la page de téléchargement',
+    'update.download.win-installer': 'Télécharger l’installeur Windows',
+    'update.download.win-portable': 'Télécharger la version portable',
+    'update.download.linux-deb': 'Télécharger le paquet Debian (.deb)',
+    'update.download.linux-appimage': 'Télécharger l’AppImage',
+    'update.download.mac-dmg': 'Télécharger l’image disque macOS',
 
     /* ---- renderer banners ---- */
     'banner.couldNotSave.title': 'Enregistrement impossible',

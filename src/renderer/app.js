@@ -31,12 +31,22 @@ const MessageBanner = {
       return I18n.t(this.lang, 'activity.details');
     },
   },
+  methods: {
+    openLink() {
+      if (this.message && this.message.link && this.message.link.url) {
+        bridge.app.openExternal(this.message.link.url);
+      }
+    },
+  },
   template: `
     <div :class="cls">
       <div class="icon">{{ icon }}</div>
       <div class="body">
         <p class="title">{{ message.title }}</p>
         <p class="detail" v-if="message.detail">{{ message.detail }}</p>
+        <p class="banner-action" v-if="message.link">
+          <a :href="message.link.url" @click.prevent="openLink">{{ message.link.label }}</a>
+        </p>
         <details class="raw-details" v-if="message.raw">
           <summary>{{ detailsLabel }}</summary>
           <pre>{{ message.raw }}</pre>
@@ -283,6 +293,7 @@ const app = createApp({
       counts: null,
       statusMessage: null,
       banner: null,
+      update: null,
       busy: '',
       addModal: false,
       newProject: { name: '', path: '', remoteUrl: '' },
@@ -361,6 +372,23 @@ const app = createApp({
     },
     encryptionWarning() {
       return this.info && this.info.encryptionAvailable === false;
+    },
+    updateLinkLabel() {
+      if (!this.update) return '';
+      const variants = ['win-installer', 'win-portable', 'linux-deb', 'linux-appimage', 'mac-dmg'];
+      const key = this.update.direct && variants.indexOf(this.update.variant) !== -1
+        ? this.update.variant
+        : 'default';
+      return this.t('update.download.' + key);
+    },
+    updateMessage() {
+      if (!this.update) return null;
+      return {
+        tone: 'info',
+        title: this.t('update.title'),
+        detail: this.t('update.detail', { version: this.update.version, current: this.update.current }),
+        link: { url: this.update.url, label: this.updateLinkLabel },
+      };
     },
   },
   methods: {
@@ -456,6 +484,8 @@ const app = createApp({
         if (last && last.exists !== false) await this.selectProject(last);
       }
       this.booting = false;
+      // Do not hold up the first screen while GitHub answers (or does not).
+      this.checkForUpdate();
     },
     async chooseLanguage(lang) {
       this.lang = I18n.languages.indexOf(lang) !== -1 ? lang : this.defaultLang;
@@ -566,6 +596,14 @@ const app = createApp({
     },
     dismiss() {
       this.banner = null;
+    },
+    async checkForUpdate() {
+      if (!bridge.app.checkUpdate) return;
+      const res = await bridge.app.checkUpdate();
+      if (res && res.ok && res.available && res.url) this.update = res;
+    },
+    dismissUpdate() {
+      this.update = null;
     },
     async selectProject(p) {
       this.selectedId = p.id;
@@ -983,6 +1021,7 @@ const app = createApp({
 
         <main class="content">
           <div class="content-narrow">
+            <message-banner v-if="updateMessage" :message="updateMessage" :lang="lang" @dismiss="dismissUpdate" />
             <message-banner v-if="banner" :message="banner" :lang="lang" @dismiss="dismiss" />
 
             <!-- WELCOME -->

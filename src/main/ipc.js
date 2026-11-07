@@ -8,6 +8,7 @@ const config = require('./config');
 const credentials = require('./credentials');
 const git = require('./git');
 const gitInstall = require('./git-install');
+const update = require('./update');
 const difftool = require('./difftool');
 const messages = require('./messages');
 const terminal = require('./terminal');
@@ -116,6 +117,13 @@ function registerIpc(getWindow) {
   ipcMain.handle('app:git-download', safe(async () => {
     const target = await gitInstall.resolveDownload(process.platform);
     return { ok: true, url: target.url, direct: target.direct };
+  }));
+
+  // Look for a newer GitHub release once at startup. Development runs are
+  // skipped: their package version is not the version people installed.
+  ipcMain.handle('app:check-update', safe(async () => {
+    if (!app.isPackaged) return { ok: true, available: false, skipped: 'dev' };
+    return update.check({ currentVersion: app.getVersion(), timeoutMs: 8000 });
   }));
 
   ipcMain.handle('settings:get', safe(async () => {
