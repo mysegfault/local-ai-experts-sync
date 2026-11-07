@@ -714,7 +714,8 @@ textarea {
   word-break: break-all;
 }
 
-.change-diff {
+.change-diff,
+.change-discard {
   flex: none;
 }
 

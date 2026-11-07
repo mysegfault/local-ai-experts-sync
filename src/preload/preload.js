@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('api', {
     pull: (id) => invoke('project:pull', id),
     push: (payload) => invoke('project:push', payload),
     commit: (payload) => invoke('project:commit', payload),
+    discardFile: (payload) => invoke('project:discard-file', payload),
+    discardAll: (id) => invoke('project:discard-all', id),
     restoreSources: (id) => invoke('project:restore-sources', id),
     diff: (payload) => invoke('project:diff', payload),
     openDiffTool: (payload) => invoke('project:open-diff-tool', payload),

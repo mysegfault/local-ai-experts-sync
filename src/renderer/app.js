@@ -305,6 +305,7 @@ const app = createApp({
       sshKeyPath: '',
       secretDirty: false,
       deleteConfirm: false,
+      discardConfirm: null,
       settingsModal: false,
       activeTab: 'sync',
       activity: [],
@@ -369,12 +370,12 @@ const app = createApp({
 
     /* ---- command log ---- */
     isActionLabel(label) {
-      return ['fetch', 'pull', 'push', 'commit', 'add', 'init', 'setRemote', 'lsRemote', 'checkout', 'recover'].indexOf(label) !== -1;
+      return ['fetch', 'pull', 'push', 'commit', 'add', 'init', 'setRemote', 'lsRemote', 'checkout', 'recover', 'discard'].indexOf(label) !== -1;
     },
     activityLabel(entry) {
       const known = [
         'detect', 'inspect', 'init', 'remote', 'setRemote', 'identity', 'status',
-        'add', 'commit', 'fetch', 'pull', 'push', 'lsRemote', 'branches', 'checkout',
+        'add', 'commit', 'fetch', 'pull', 'push', 'lsRemote', 'branches', 'checkout', 'discard',
       ];
       return entry && entry.label && known.indexOf(entry.label) !== -1
         ? this.t('activity.label.' + entry.label)
@@ -505,6 +506,7 @@ const app = createApp({
     },
     closeTopModal() {
       if (this.diffModal) this.closeDiff();
+      else if (this.discardConfirm) this.closeDiscard();
       else if (this.deleteConfirm) this.deleteConfirm = false;
       else if (this.pushModal) this.pushModal = false;
       else if (this.addModal) this.addModal = false;
@@ -608,6 +610,40 @@ const app = createApp({
     kindLabel(kind) {
       const known = ['new', 'added', 'modified', 'deleted', 'renamed', 'conflict', 'changed'];
       return this.t('change.' + (known.indexOf(kind) !== -1 ? kind : 'changed'));
+    },
+
+    /* ---- discarding local changes ---- */
+    changeLabel(change) {
+      if (!change) return '';
+      return change.origPath ? change.origPath + ' → ' + change.path : change.path;
+    },
+    askDiscardFile(change) {
+      if (!change || !change.path) return;
+      this.discardConfirm = { scope: 'file', path: change.path, label: this.changeLabel(change) };
+    },
+    askDiscardAll() {
+      if (!this.changes.length) return;
+      this.discardConfirm = { scope: 'all', path: '', label: '' };
+    },
+    closeDiscard() {
+      if (this.busy === 'discard') return;
+      this.discardConfirm = null;
+    },
+    async confirmDiscard() {
+      const target = this.discardConfirm;
+      if (!target || !this.selectedProject) return;
+      this.busy = 'discard';
+      const res = target.scope === 'file'
+        ? await bridge.project.discardFile({ id: this.selectedId, path: target.path })
+        : await bridge.project.discardAll(this.selectedId);
+      this.busy = '';
+      this.discardConfirm = null;
+      this.setBanner((res && res.message) || {
+        tone: 'error',
+        title: this.t('discard.failed.title'),
+        detail: (res && res.error) || this.t('main.generic.detail'),
+      });
+      await this.refreshStatus();
     },
 
     /* ---- differences ---- */
@@ -1121,14 +1157,16 @@ const app = createApp({
                     <div class="actions-row">
                       <button class="btn btn-sm" v-if="changes.length" :disabled="!!busy" @click="openDiff()">👁 {{ t('diff.button') }}</button>
                       <button class="btn btn-sm" :disabled="!!busy" @click="refreshStatus">↻ {{ t('common.refresh') }}</button>
+                      <button class="btn btn-sm btn-danger" v-if="changes.length" :disabled="!!busy" @click="askDiscardAll">↩ {{ t('files.discardAll') }}</button>
                     </div>
                   </div>
 
                   <ul class="change-list" v-if="changes.length">
                     <li class="change-item" v-for="c in changes" :key="c.path">
                       <span class="tag" :class="c.kind">{{ kindLabel(c.kind) }}</span>
-                      <span class="path">{{ c.path }}</span>
+                      <span class="path">{{ changeLabel(c) }}</span>
                       <button class="btn btn-sm change-diff" @click="openDiff(c.path)">👁 {{ t('diff.view') }}</button>
+                      <button class="btn btn-sm btn-danger change-discard" :disabled="!!busy" @click="askDiscardFile(c)">{{ t('files.discard') }}</button>
                     </li>
                   </ul>
                   <p v-else style="color:var(--ink-soft);font-size:14px;margin:6px 0 0">
@@ -1331,6 +1369,24 @@ const app = createApp({
             <button class="btn btn-primary" :disabled="busy === 'push'" @click="confirmPush">
               <span class="spinner" v-if="busy === 'push'"></span>
               <span v-else>{{ t('push.submit') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISCARD CONFIRM -->
+      <div class="overlay" v-if="discardConfirm" @click.self="closeDiscard">
+        <div class="modal" style="max-width:480px">
+          <div class="modal-head">
+            <h3>{{ discardConfirm.scope === 'file' ? t('discard.fileTitle') : t('discard.title') }}</h3>
+            <p class="sub" v-if="discardConfirm.scope === 'file'">{{ t('discard.fileDetail', { path: discardConfirm.label }) }}</p>
+            <p class="sub" v-else>{{ t('discard.detail') }}</p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn" :disabled="busy === 'discard'" @click="closeDiscard">{{ t('common.cancel') }}</button>
+            <button class="btn btn-danger" :disabled="busy === 'discard'" @click="confirmDiscard">
+              <span class="spinner dark" v-if="busy === 'discard'"></span>
+              <span v-else>{{ t('discard.confirm') }}</span>
             </button>
           </div>
         </div>

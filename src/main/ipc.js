@@ -493,6 +493,47 @@ function registerIpc(getWindow) {
     if (!commitRes.ok) return { ok: false, message: messages.friendlyError(commitRes, 'main.err.saveChanges.title') };
     return { ok: true, message: toast('ok', 'main.savedLocally.title', 'main.savedLocally.detail') };
   }));
+
+  ipcMain.handle('project:discard-file', safe(async (_evt, payload) => {
+    const id = payload && payload.id;
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+    const filePath = String((payload && payload.path) || '');
+    if (!filePath) return { ok: false, message: toast('info', 'discard.nothing.title', 'discard.nothing.detail') };
+
+    const res = await git.discardFile(p.path, filePath);
+    if (!res.ok) {
+      if (res.reason === 'not-changed' || res.reason === 'nothing') {
+        return { ok: false, message: toast('info', 'discard.nothing.title', 'discard.nothing.detail') };
+      }
+      return { ok: false, message: messages.friendlyError(res, 'discard.failed.title') };
+    }
+    const after = await git.status(p.path);
+    return {
+      ok: true,
+      data: after.ok ? after.data : null,
+      message: toast('ok', 'discard.done.title', 'discard.done.detail'),
+    };
+  }));
+
+  ipcMain.handle('project:discard-all', safe(async (_evt, id) => {
+    const p = config.getProject(id);
+    if (!p) return { ok: false, error: 'Project not found' };
+
+    const res = await git.discardAll(p.path);
+    if (!res.ok) {
+      if (res.reason === 'nothing') {
+        return { ok: false, message: toast('info', 'discard.nothing.title', 'discard.nothing.detail') };
+      }
+      return { ok: false, message: messages.friendlyError(res, 'discard.failed.title') };
+    }
+    const after = await git.status(p.path);
+    return {
+      ok: true,
+      data: after.ok ? after.data : null,
+      message: toast('ok', 'discard.done.title', 'discard.done.detail'),
+    };
+  }));
 }
 
 module.exports = { registerIpc };

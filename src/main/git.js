@@ -390,19 +390,37 @@ function parseStatus(text) {
     } else if (line.startsWith('! ')) {
       continue;
     } else if (line.startsWith('1 ') || line.startsWith('2 ') || line.startsWith('u ')) {
-      const parts = line.split(' ');
-      // porcelain v2: <xy> <sub> <mH> <mI> <mW> <hH> <hI> <path>
-      const xy = parts[1] || '..';
-      const filePath = parts.slice(parts.length - 1).join(' ');
+      const recordType = line[0];
+      const parts = line.slice(2).split(' ');
+      const xy = parts[0] || '..';
+      let filePath = '';
+      let origPath = '';
+
+      if (recordType === '2') {
+        // Rename/copy: <X><score> <path>\t<origPath>
+        const remainder = parts.slice(8).join(' ');
+        const tab = remainder.indexOf('\t');
+        filePath = tab === -1 ? remainder : remainder.slice(0, tab);
+        origPath = tab === -1 ? '' : remainder.slice(tab + 1);
+      } else if (recordType === 'u') {
+        // Unmerged: <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>
+        filePath = parts.slice(9).join(' ');
+      } else {
+        // Ordinary: <sub> <mH> <mI> <mW> <hH> <hI> <path>
+        filePath = parts.slice(7).join(' ');
+      }
+
       const index = xy[0];
       const worktree = xy[1];
-      result.changes.push({
+      const change = {
         path: filePath,
         untracked: false,
         index,
         worktree,
         kind: classify(index, worktree),
-      });
+      };
+      if (origPath) change.origPath = origPath;
+      result.changes.push(change);
     }
   }
 
@@ -422,7 +440,11 @@ function classify(index, worktree) {
 }
 
 async function status(dir) {
-  const res = await git(['status', '--porcelain=v2', '--branch'], { cwd: dir, timeoutMs: 30000, label: 'status' });
+  const res = await git(['-c', 'core.quotepath=false', 'status', '--porcelain=v2', '--branch'], {
+    cwd: dir,
+    timeoutMs: 30000,
+    label: 'status',
+  });
   if (!res.ok) {
     return { ok: false, error: (res.stderr || res.stdout || '').trim(), data: null };
   }
@@ -441,6 +463,131 @@ function summarizeChanges(changes) {
 
 async function addAll(dir) {
   return git(['add', '-A'], { cwd: dir, timeoutMs: 60000, label: 'add' });
+}
+
+function failure(reason, message) {
+  return { ok: false, code: 1, stdout: '', stderr: message || '', reason: reason || '' };
+}
+
+/*
+ * Turn a path reported by `git status` into a path relative to the project
+ * folder. `git status` only reports relative paths, but the renderer sends the
+ * path back to us, so we still refuse anything that would escape the folder.
+ */
+function repoRelativePath(dir, filePath) {
+  const text = String(filePath || '');
+  if (!text || text.indexOf('\0') !== -1) return '';
+  const root = path.resolve(dir);
+  const absolute = path.resolve(root, text);
+  const rel = path.relative(root, absolute);
+  if (!rel || rel === '..' || rel.indexOf('..' + path.sep) === 0 || path.isAbsolute(rel)) return '';
+  return rel.split(path.sep).join('/');
+}
+
+/*
+ * Throw away the local changes of a single file, restoring the version from
+ * the last commit. Files that Git does not track yet are deleted instead.
+ * With no first commit there is no saved version, so those files are removed
+ * from the index and from the disk.
+ */
+async function discardFile(dir, filePath) {
+  const st = await status(dir);
+  if (!st.ok) return failure('status', st.error);
+
+  const wanted = String(filePath || '');
+  const change = (st.data.changes || []).find(
+    (c) => c.path === wanted || (c.origPath && c.origPath === wanted)
+  );
+  if (!change) return failure('not-changed', 'This file has no uncommitted changes.');
+
+  if (change.untracked) {
+    const target = repoRelativePath(dir, change.path);
+    if (!target) return failure('invalid-path', 'Invalid file path.');
+    return git(['clean', '-f', '-d', '--', target], { cwd: dir, timeoutMs: 60000, label: 'discard' });
+  }
+
+  // A rename reports both the old and the new path: restore both so the old
+  // name comes back and the new one disappears.
+  const targets = [change.path, change.origPath]
+    .filter(Boolean)
+    .map((p) => repoRelativePath(dir, p))
+    .filter((p, index, all) => p && all.indexOf(p) === index);
+  if (!targets.length) return failure('invalid-path', 'Invalid file path.');
+
+  if (st.data.initial) {
+    // No first commit: remove the staged entry, then delete the file.
+    const unstage = await git(['rm', '-f', '--cached', '--'].concat(targets), {
+      cwd: dir,
+      timeoutMs: 60000,
+      label: 'discard',
+    });
+    if (!unstage.ok) return unstage;
+    for (const target of targets) {
+      try {
+        fs.rmSync(path.resolve(dir, target), { recursive: true, force: true });
+      } catch (err) {
+        return failure('delete-failed', String((err && err.message) || err));
+      }
+    }
+    return { ok: true, code: 0, stdout: '', stderr: '' };
+  }
+
+  const restored = await git(['restore', '--source=HEAD', '--staged', '--worktree', '--'].concat(targets), {
+    cwd: dir,
+    timeoutMs: 60000,
+    label: 'discard',
+  });
+  if (restored.ok) return restored;
+
+  // Git older than 2.23 has no `restore`: unstage then check the file out.
+  if (/unknown subcommand|not a git command|unknown option/i.test(restored.stderr + restored.stdout)) {
+    const reset = await git(['reset', '-q', 'HEAD', '--'].concat(targets), {
+      cwd: dir,
+      timeoutMs: 60000,
+      label: 'discard',
+    });
+    if (!reset.ok) return reset;
+    return git(['checkout', 'HEAD', '--'].concat(targets), {
+      cwd: dir,
+      timeoutMs: 60000,
+      label: 'discard',
+    });
+  }
+  return restored;
+}
+
+/*
+ * Throw away every uncommitted change in the project: restore tracked files
+ * from the last commit, then delete files that were never tracked. Ignored
+ * files (node_modules, build output, …) are preserved by `git clean` because
+ * we do not pass -x.
+ */
+async function discardAll(dir) {
+  const st = await status(dir);
+  if (!st.ok) return failure('status', st.error);
+  if (!(st.data.changes || []).length) return failure('nothing', 'There are no uncommitted changes.');
+
+  if (st.data.initial) {
+    // Without a first commit there is no saved version to restore, so unstage
+    // everything (best effort) and let `clean` remove the files.
+    await git(['rm', '-r', '-f', '--cached', '--', '.'], {
+      cwd: dir,
+      timeoutMs: 60000,
+      label: 'discard',
+    });
+  } else {
+    const reset = await git(['reset', '--hard', 'HEAD'], { cwd: dir, timeoutMs: 120000, label: 'discard' });
+    if (!reset.ok) return reset;
+  }
+
+  const clean = await git(['clean', '-f', '-d', '--', '.'], { cwd: dir, timeoutMs: 120000, label: 'discard' });
+  if (!clean.ok) return clean;
+
+  const after = await status(dir);
+  if (after.ok && after.data.changes.length > 0) {
+    return failure('incomplete', 'Some changes could not be discarded.');
+  }
+  return { ok: true, code: 0, stdout: clean.stdout, stderr: clean.stderr };
 }
 
 async function commit(dir, message, identity) {
@@ -771,6 +918,8 @@ module.exports = {
   status,
   summarizeChanges,
   addAll,
+  discardFile,
+  discardAll,
   commit,
   fetch,
   pull,

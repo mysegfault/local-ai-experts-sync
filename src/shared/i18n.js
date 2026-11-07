@@ -52,6 +52,7 @@
     'activity.label.lsRemote': 'Test server',
     'activity.label.branches': 'Server branches',
     'activity.label.checkout': 'Restore files',
+    'activity.label.discard': 'Discard changes',
 
     /* ---- settings ---- */
     'settings.button': 'Settings',
@@ -148,6 +149,22 @@
     'files.notConnected': 'Not connected to the server branch yet',
     'files.newerOnServer': 'Newer on server:',
     'files.waitingUpload': 'Waiting to upload:',
+    'files.discard': 'Discard',
+    'files.discardAll': 'Discard all changes',
+
+    /* ---- discard confirm ---- */
+    'discard.title': 'Discard all changes?',
+    'discard.detail':
+      'All uncommitted changes in this project will be permanently removed. Files that were never saved to Git will be deleted. This cannot be undone.',
+    'discard.fileTitle': 'Discard changes to this file?',
+    'discard.fileDetail':
+      '“{path}” will return to its last saved version. If it was never saved to Git, the file will be deleted. This cannot be undone.',
+    'discard.confirm': 'Discard changes',
+    'discard.nothing.title': 'No changes to discard',
+    'discard.nothing.detail': 'This file or project has no uncommitted changes anymore.',
+    'discard.done.title': 'Changes discarded',
+    'discard.done.detail': 'The project is back to its last saved version.',
+    'discard.failed.title': 'Could not discard the changes',
 
     /* ---- diffs ---- */
     'diff.button': 'See differences',
@@ -428,6 +445,7 @@
     'activity.label.lsRemote': 'Test du serveur',
     'activity.label.branches': 'Branches du serveur',
     'activity.label.checkout': 'Récupération des fichiers',
+    'activity.label.discard': 'Annulation des modifications',
 
     /* ---- settings ---- */
     'settings.button': 'Paramètres',
@@ -524,6 +542,22 @@
     'files.notConnected': 'Pas encore relié à la branche du serveur',
     'files.newerOnServer': 'Plus récent sur le serveur :',
     'files.waitingUpload': "En attente d'envoi :",
+    'files.discard': 'Annuler',
+    'files.discardAll': 'Annuler toutes les modifications',
+
+    /* ---- annulation des modifications ---- */
+    'discard.title': 'Annuler toutes les modifications ?',
+    'discard.detail':
+      'Toutes les modifications non enregistrées de ce projet seront définitivement supprimées. Les fichiers qui n’ont jamais été enregistrés dans Git seront supprimés. Cette action est irréversible.',
+    'discard.fileTitle': 'Annuler les modifications de ce fichier ?',
+    'discard.fileDetail':
+      '« {path} » reviendra à sa dernière version enregistrée. S’il n’a jamais été enregistré dans Git, le fichier sera supprimé. Cette action est irréversible.',
+    'discard.confirm': 'Annuler les modifications',
+    'discard.nothing.title': 'Aucune modification à annuler',
+    'discard.nothing.detail': 'Ce fichier ou ce projet n’a plus de modifications non enregistrées.',
+    'discard.done.title': 'Modifications annulées',
+    'discard.done.detail': 'Le projet est revenu à sa dernière version enregistrée.',
+    'discard.failed.title': 'Impossible d’annuler les modifications',
 
     /* ---- différences ---- */
     'diff.button': 'Voir les différences',
