@@ -53,6 +53,9 @@ const GitMissing = {
     lang: { type: String, default: 'en' },
   },
   emits: ['recheck'],
+  data() {
+    return { directDownloadUrl: '' };
+  },
   computed: {
     osKey() {
       if (this.platform === 'win32') return 'win';
@@ -79,12 +82,33 @@ const GitMissing = {
     downloadLabel() {
       return I18n.t(this.lang, 'git.downloadButton', { platform: this.platformName });
     },
+    directLinkLabel() {
+      return I18n.t(this.lang, 'git.directLink');
+    },
     recheckLabel() {
       return I18n.t(this.lang, 'git.recheck');
     },
   },
+  mounted() {
+    this.loadDirectDownload();
+  },
   methods: {
-    download() {
+    async loadDirectDownload() {
+      if (this.platform !== 'win32' || !bridge.app.getGitDownload) return;
+      const res = await bridge.app.getGitDownload();
+      if (res && res.ok && res.direct && res.url) this.directDownloadUrl = res.url;
+    },
+    async download() {
+      if (this.platform === 'win32' && bridge.app.getGitDownload) {
+        const res = this.directDownloadUrl
+          ? { ok: true, url: this.directDownloadUrl, direct: true }
+          : await bridge.app.getGitDownload();
+        if (res && res.ok && res.url) {
+          if (res.direct) this.directDownloadUrl = res.url;
+          bridge.app.openExternal(res.url);
+          return;
+        }
+      }
       bridge.app.openExternal(this.downloadUrl);
     },
   },
@@ -110,6 +134,9 @@ const GitMissing = {
             <button class="btn btn-primary btn-lg" @click="download">⬇️ {{ downloadLabel }}</button>
             <button class="btn btn-lg" @click="$emit('recheck')">{{ recheckLabel }}</button>
           </div>
+          <p class="direct-download" v-if="directDownloadUrl">
+            <a :href="directDownloadUrl" @click.prevent="download">{{ directLinkLabel }}</a>
+          </p>
         </div>
       </div>
     </div>
@@ -487,7 +514,18 @@ const app = createApp({
       if (evt.key === 'Escape') this.closeTopModal();
     },
     async recheckGit() {
+      const wasInstalled = this.hasGit;
       this.git = await bridge.app.detectGit();
+      if (!this.hasGit || wasInstalled) return;
+
+      // Git was just installed while the app was open: load the identity and
+      // refresh the project states that were computed while Git was missing.
+      if (!this.identityReady) {
+        const idRes = await bridge.identity.get();
+        if (idRes && idRes.ok) this.gitIdentity = { name: idRes.name || '', email: idRes.email || '' };
+      }
+      await this.refreshProjects();
+      if (this.selectedProject) await this.refreshStatus();
     },
     async refreshProjects() {
       const res = await bridge.projects.list();

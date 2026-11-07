@@ -7,6 +7,7 @@ const { ipcMain, dialog, app, shell } = require('electron');
 const config = require('./config');
 const credentials = require('./credentials');
 const git = require('./git');
+const gitInstall = require('./git-install');
 const difftool = require('./difftool');
 const messages = require('./messages');
 const terminal = require('./terminal');
@@ -108,6 +109,13 @@ function registerIpc(getWindow) {
   ipcMain.handle('app:open-external', safe(async (_evt, url) => {
     if (/^https?:\/\//i.test(String(url))) await shell.openExternal(String(url));
     return { ok: true };
+  }));
+
+  // The Windows "Git missing" screen uses this to offer the installer itself
+  // instead of a download page.
+  ipcMain.handle('app:git-download', safe(async () => {
+    const target = await gitInstall.resolveDownload(process.platform);
+    return { ok: true, url: target.url, direct: target.direct };
   }));
 
   ipcMain.handle('settings:get', safe(async () => {

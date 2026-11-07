@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   app: {
     info: () => invoke('app:info'),
     detectGit: () => invoke('app:detect-git'),
+    getGitDownload: () => invoke('app:git-download'),
     openExternal: (url) => invoke('app:open-external', url),
   },
   settings: {

@@ -84,7 +84,7 @@
     'git.title': 'One quick setup step',
     'git.intro':
       'This app needs a free tool called Git to save and share your projects. Git was not found on your computer yet. It only takes a minute to install.',
-    'git.steps.win.1': 'Click "Download Git for Windows" below.',
+    'git.steps.win.1': 'Click "Download Git for Windows" below: the official installer starts downloading directly.',
     'git.steps.win.2': 'Run the downloaded file and keep clicking "Next" (the default options are fine).',
     'git.steps.win.3': 'When it finishes, come back here and click "I installed it — check again".',
     'git.steps.mac.1':
@@ -96,6 +96,7 @@
     'git.steps.linux.2': 'Or click "Get Git for Linux" below for instructions for your distribution.',
     'git.steps.linux.3': 'When it finishes, come back here and click "I installed it — check again".',
     'git.downloadButton': 'Get Git for {platform}',
+    'git.directLink': 'Download the official installer directly (.exe)',
     'git.recheck': 'I installed it — check again',
 
     /* ---- welcome ---- */
@@ -459,7 +460,7 @@
     'git.title': 'Une petite étape de configuration',
     'git.intro':
       "Cette application a besoin d'un outil gratuit appelé Git pour enregistrer et partager vos projets. Git n'a pas encore été trouvé sur votre ordinateur. L'installation ne prend qu'une minute.",
-    'git.steps.win.1': 'Cliquez sur « Télécharger Git pour Windows » ci-dessous.',
+    'git.steps.win.1': 'Cliquez sur « Télécharger Git pour Windows » ci-dessous : l\u2019installeur officiel se télécharge directement.',
     'git.steps.win.2': "Lancez le fichier téléchargé et cliquez sur « Suivant » (les options par défaut conviennent).",
     'git.steps.win.3': 'Une fois terminé, revenez ici et cliquez sur « Je l\u2019ai installé — vérifier à nouveau ».',
     'git.steps.mac.1':
@@ -471,6 +472,7 @@
     'git.steps.linux.2': 'Ou cliquez sur « Obtenir Git pour Linux » ci-dessous pour les instructions selon votre distribution.',
     'git.steps.linux.3': 'Une fois terminé, revenez ici et cliquez sur « Je l\u2019ai installé — vérifier à nouveau ».',
     'git.downloadButton': 'Obtenir Git pour {platform}',
+    'git.directLink': 'Télécharger directement l\u2019installeur officiel (.exe)',
     'git.recheck': "Je l'ai installé — vérifier à nouveau",
 
     /* ---- welcome ---- */

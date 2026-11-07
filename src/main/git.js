@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 
 /* ---------------------------------------------------------------------------
  * Activity log
@@ -62,6 +62,110 @@ function helperPath() {
     /* not running under Electron */
   }
   return path.join(__dirname, 'askpass-helper.js');
+}
+
+/* ---------------------------------------------------------------------------
+ * Locating Git on Windows
+ *
+ * Windows freezes the process environment (and therefore PATH) when the app
+ * starts. If the user installs Git while the app is running, the installer
+ * updates the registry but not our copy of PATH, so `spawn('git')` keeps
+ * failing until the app is restarted. To avoid that, we look for git.exe in
+ * the usual install folders and in the fresh PATH stored in the registry, and
+ * then reuse that full path for every Git command.
+ * ------------------------------------------------------------------------- */
+
+let gitExecutable = null;
+
+function expandWindowsVars(value) {
+  return String(value).replace(/%([^%]+)%/g, (match, name) => {
+    const key = Object.keys(process.env).find((k) => k.toLowerCase() === name.toLowerCase());
+    return key ? process.env[key] : match;
+  });
+}
+
+function windowsPathFromRegistry() {
+  if (process.platform !== 'win32') return [];
+
+  const keys = [
+    'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment',
+    'HKCU\\Environment',
+  ];
+  const dirs = [];
+
+  for (const key of keys) {
+    let output = '';
+    try {
+      output = execFileSync('reg', ['query', key, '/v', 'Path'], {
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: 5000,
+      });
+    } catch (_) {
+      continue;
+    }
+    const match = output.match(/(?:^|\s)Path\s+REG_(?:EXPAND_)?SZ\s+(.+)/i);
+    if (!match) continue;
+    expandWindowsVars(match[1]).split(';').forEach((dir) => {
+      const trimmed = dir.trim().replace(/^"|"$/g, '');
+      if (trimmed) dirs.push(trimmed);
+    });
+  }
+
+  return dirs;
+}
+
+function firstExistingGit(candidates) {
+  const seen = {};
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen[key]) continue;
+    seen[key] = true;
+    try {
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch (_) {
+      /* keep looking */
+    }
+  }
+  return '';
+}
+
+function findWindowsGit() {
+  if (process.platform !== 'win32') return '';
+
+  const programRoots = [
+    process.env.ProgramFiles,
+    process.env['ProgramFiles(x86)'],
+    process.env.ProgramW6432,
+    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs') : '',
+    process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'AppData', 'Local', 'Programs') : '',
+  ];
+
+  const standard = [];
+  for (const root of programRoots) {
+    if (!root) continue;
+    standard.push(path.join(root, 'Git', 'cmd', 'git.exe'));
+    standard.push(path.join(root, 'Git', 'bin', 'git.exe'));
+  }
+  const found = firstExistingGit(standard);
+  if (found) return found;
+
+  // Custom install folders, and the directories added to PATH by an installer
+  // that ran after this process started. Reading the registry is slower, so we
+  // only do it when the usual locations did not match.
+  return firstExistingGit(windowsPathFromRegistry().map((dir) => path.join(dir, 'git.exe')));
+}
+
+function refreshGitExecutable() {
+  if (process.platform !== 'win32') return 'git';
+  gitExecutable = findWindowsGit();
+  return gitExecutable || 'git';
+}
+
+function gitCommand() {
+  if (process.platform !== 'win32') return 'git';
+  if (!gitExecutable) gitExecutable = findWindowsGit();
+  return gitExecutable || 'git';
 }
 
 function run(command, args, options = {}) {
@@ -164,7 +268,7 @@ function credentialConfigArgs(creds) {
 
 async function git(args, opts = {}) {
   const fullArgs = credentialConfigArgs(opts.creds).concat(args);
-  return run('git', fullArgs, {
+  return run(gitCommand(), fullArgs, {
     cwd: opts.cwd,
     env: gitEnv(opts.creds),
     timeoutMs: opts.timeoutMs,
@@ -173,7 +277,15 @@ async function git(args, opts = {}) {
 }
 
 async function detect() {
-  const res = await run('git', ['--version'], { timeoutMs: 15000, label: 'detect' });
+  // Re-scan the install folders and the registry every time: the user may have
+  // just finished installing Git while the app was open.
+  const command = refreshGitExecutable();
+  let res = await run(command, ['--version'], { timeoutMs: 15000, label: 'detect' });
+  if (!res.ok && command !== 'git') {
+    // The cached path may have become stale (Git moved or was uninstalled).
+    gitExecutable = null;
+    res = await run('git', ['--version'], { timeoutMs: 15000, label: 'detect' });
+  }
   if (!res.ok) {
     return { installed: false, version: '', error: (res.stderr || res.stdout || '').trim() };
   }

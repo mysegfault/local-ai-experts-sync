@@ -932,6 +932,21 @@ textarea {
   flex: none;
 }
 
+.direct-download {
+  margin: 14px auto 0;
+  font-size: 13px;
+}
+
+.direct-download a {
+  color: var(--primary);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.direct-download a:hover {
+  color: var(--primary-dark);
+}
+
 /* ---------- modal ---------- */
 .overlay {
   position: fixed;
