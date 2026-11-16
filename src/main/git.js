@@ -602,8 +602,35 @@ async function fetch(dir, creds) {
   return git(['fetch', '--prune'], { cwd: dir, creds, timeoutMs: 180000, label: 'fetch' });
 }
 
+// Git refuses a fast-forward when the local branch and the server branch have
+// both moved on (diverged). That is normal for someone syncing the same project
+// from two computers: instead of failing with "diverging branches can't be
+// fast-forwarded", merge the two histories. A clean merge keeps both sides'
+// work; if the same file was really edited on both sides, the merge is undone
+// so the project stays exactly as it was, and the caller shows the usual
+// conflict guidance.
+const DIVERGED_PULL = /diverging branches|not possible to fast-forward|fast-forwarded|fast forwarded|need to specify how to reconcile|non-fast-forward/i;
+
 async function pull(dir, creds) {
-  return git(['pull', '--ff-only'], { cwd: dir, creds, timeoutMs: 300000, label: 'pull' });
+  const fastForward = await git(['pull', '--ff-only'], { cwd: dir, creds, timeoutMs: 300000, label: 'pull' });
+  if (fastForward.ok) return fastForward;
+
+  const output = `${fastForward.stderr || ''}\n${fastForward.stdout || ''}`;
+  if (!DIVERGED_PULL.test(output)) return fastForward;
+
+  const merged = await git(['pull', '--no-rebase', '--ff', '--no-edit'], {
+    cwd: dir,
+    creds,
+    timeoutMs: 300000,
+    label: 'pull',
+  });
+  if (merged.ok) return merged;
+
+  const mergeOutput = `${merged.stderr || ''}\n${merged.stdout || ''}`;
+  if (/conflict|automatic merge failed/i.test(mergeOutput)) {
+    await git(['merge', '--abort'], { cwd: dir, timeoutMs: 60000, label: 'pull' });
+  }
+  return merged;
 }
 
 async function push(dir, creds) {

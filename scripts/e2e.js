@@ -122,6 +122,16 @@ async function main() {
   const mapped = messages.friendlyError(pushA, 'x');
   check('divergent push gives friendly guidance', /server has changes/i.test(mapped.title), mapped.title);
 
+  // ---- divergent pull should merge instead of refusing ----
+  const pullDiverge = await git.pull(workA, { mode: 'none' });
+  check('divergent pull succeeds by merging', pullDiverge.ok, (pullDiverge.stderr || pullDiverge.stdout || '').trim().split('\n')[0]);
+  check(
+    'divergent pull keeps both sides',
+    fs.existsSync(path.join(workA, 'third.txt')) && fs.existsSync(path.join(workA, 'a-only.txt'))
+  );
+  st = await git.status(workA);
+  check('divergent pull clears the behind count', st.ok && st.data.behind === 0, 'behind=' + (st.data && st.data.behind));
+
   // ---- fresh repo with no commits ----
   const workC = path.join(tmp, 'workC');
   fs.mkdirSync(workC);
