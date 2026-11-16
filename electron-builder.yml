@@ -48,5 +48,8 @@ linux:
     - deb
   category: Development
   maintainer: Local AI Experts
+  # Use the same identity as Electron's app_id / WM_CLASS so desktop
+  # environments can associate the window with the installed .desktop entry.
+  syncDesktopName: true
   icon: build/icon.png
   artifactName: ${productName}-${version}-${arch}.${ext}

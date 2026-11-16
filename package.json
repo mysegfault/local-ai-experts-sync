@@ -3,6 +3,7 @@
   "productName": "Local AI Experts Sync",
   "version": "0.3.0",
   "description": "A friendly cross-platform Git sync app for non-technical users",
+  "desktopName": "com.localaiexperts.sync.desktop",
   "main": "src/main/main.js",
   "author": "Local AI Experts",
   "license": "MIT",
@@ -25,7 +26,7 @@
     "dist:linux": "electron-builder --linux"
   },
   "devDependencies": {
-    "electron": "^44.9.0",
-    "electron-builder": "^26.15.3"
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
   }
 }
