@@ -26,7 +26,10 @@
     "dist:linux": "electron-builder --linux"
   },
   "devDependencies": {
-    "electron": "^45.3.3",
+    "electron": "^45.4.1",
     "electron-builder": "^26.18.0"
+  },
+  "allowScripts": {
+    "electron-winstaller@5.4.0": true
   }
 }
